@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(flutter test *)",
+      "PowerShell(flutter build *)"
+    ]
+  }
+}
