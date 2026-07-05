@@ -105,6 +105,17 @@ class AuthProvider extends ChangeNotifier {
     return null;
   }
 
+  /// Admin-only: remove a staff or admin account. Returns null on success,
+  /// or an error message on failure.
+  String? deleteStaff(String id) {
+    if (_currentUser?.id == id) {
+      return 'You cannot delete your own account.';
+    }
+    _users.removeWhere((u) => u.id == id);
+    notifyListeners();
+    return null;
+  }
+
   Future<void> logout() async {
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();

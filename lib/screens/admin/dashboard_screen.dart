@@ -56,11 +56,12 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 24),
-        Text('Recent bookings',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          'Recent bookings',
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 8),
         if (recent.isEmpty)
           const Padding(
@@ -98,16 +99,22 @@ class _RecentTile extends StatelessWidget {
           child: Icon(Icons.bed, color: _color()),
         ),
         title: Text(booking.roomName),
-        subtitle: Text('${booking.customerName} · '
-            '${Format.date(booking.checkIn)} → ${Format.date(booking.checkOut)}'),
+        subtitle: Text(
+          '${booking.customerName} · '
+          '${Format.date(booking.checkIn)} → ${Format.date(booking.checkOut)}',
+        ),
         trailing: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text(Format.money(booking.totalPrice),
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(booking.status.label,
-                style: TextStyle(color: _color(), fontSize: 12)),
+            Text(
+              Format.money(booking.totalPrice),
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              booking.status.label,
+              style: TextStyle(color: _color(), fontSize: 12),
+            ),
           ],
         ),
       ),

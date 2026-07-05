@@ -26,14 +26,26 @@ class ManageStaffScreen extends StatelessWidget {
                 backgroundColor: u.role == UserRole.admin
                     ? Colors.deepPurple.shade100
                     : Colors.blue.shade100,
-                child: Icon(u.role == UserRole.admin
-                    ? Icons.admin_panel_settings
-                    : Icons.badge),
+                child: Icon(
+                  u.role == UserRole.admin
+                      ? Icons.admin_panel_settings
+                      : Icons.badge,
+                ),
               ),
               title: Text(u.name),
               subtitle: Text('${u.email}\n${u.phone}'),
               isThreeLine: true,
-              trailing: Chip(label: Text(u.role.label)),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Chip(label: Text(u.role.label)),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    tooltip: 'Delete account',
+                    onPressed: () => _confirmDelete(context, u),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -51,6 +63,32 @@ class ManageStaffScreen extends StatelessWidget {
       context: context,
       isScrollControlled: true,
       builder: (_) => const _AddStaffSheet(),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, AppUser user) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete account'),
+        content: Text('Delete ${user.name}\'s account? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final error = context.read<AuthProvider>().deleteStaff(user.id);
+              Navigator.of(dialogContext).pop();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(error ?? '${user.name} deleted')),
+              );
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -83,20 +121,20 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     final error = context.read<AuthProvider>().createStaff(
-          name: _name.text,
-          email: _email.text,
-          phone: _phone.text,
-          password: _password.text,
-          role: _role,
-        );
+      name: _name.text,
+      email: _email.text,
+      phone: _phone.text,
+      password: _password.text,
+      role: _role,
+    );
     if (error != null) {
       setState(() => _error = error);
       return;
     }
     Navigator.of(context).pop();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('${_role.label} account created')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('${_role.label} account created')));
   }
 
   @override
@@ -114,11 +152,12 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('New staff account',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'New staff account',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _name,
@@ -153,13 +192,13 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
             const SizedBox(height: 12),
             DropdownButtonFormField<UserRole>(
               initialValue: _role,
-              decoration:
-                  const InputDecoration(labelText: 'Permission level'),
+              decoration: const InputDecoration(labelText: 'Permission level'),
               items: const [
+                DropdownMenuItem(value: UserRole.staff, child: Text('Staff')),
                 DropdownMenuItem(
-                    value: UserRole.staff, child: Text('Staff')),
-                DropdownMenuItem(
-                    value: UserRole.admin, child: Text('Administrator')),
+                  value: UserRole.admin,
+                  child: Text('Administrator'),
+                ),
               ],
               onChanged: (v) => setState(() => _role = v ?? UserRole.staff),
             ),

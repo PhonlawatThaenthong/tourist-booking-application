@@ -34,9 +34,10 @@ class _LoginScreenState extends State<LoginScreen> {
       _loading = true;
       _error = null;
     });
-    final error = await context
-        .read<AuthProvider>()
-        .login(_emailCtrl.text, _passwordCtrl.text);
+    final error = await context.read<AuthProvider>().login(
+      _emailCtrl.text,
+      _passwordCtrl.text,
+    );
     if (!mounted) return;
     setState(() {
       _loading = false;
@@ -64,15 +65,16 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(Icons.beach_access,
-                        size: 64, color: AppTheme.primary),
+                    const Icon(
+                      Icons.beach_access,
+                      size: 64,
+                      color: AppTheme.primary,
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       AppConfig.hotelName,
                       textAlign: TextAlign.center,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
+                      style: Theme.of(context).textTheme.headlineSmall
                           ?.copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 4),
@@ -101,11 +103,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         labelText: 'Password',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscure
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                          icon: Icon(
+                            _obscure
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
                       validator: (v) => (v == null || v.isEmpty)
@@ -128,7 +131,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               height: 22,
                               width: 22,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : const Text('Sign in'),
                     ),
@@ -136,7 +141,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextButton(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
-                            builder: (_) => const RegisterScreen()),
+                          builder: (_) => const RegisterScreen(),
+                        ),
                       ),
                       child: const Text("Don't have an account? Sign up"),
                     ),
@@ -167,11 +173,12 @@ class _DemoCredentials extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Demo accounts',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            Text(
+              'Demo accounts',
+              style: Theme.of(
+                context,
+              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -180,8 +187,7 @@ class _DemoCredentials extends StatelessWidget {
                 ActionChip(
                   avatar: const Icon(Icons.person, size: 18),
                   label: const Text('Customer'),
-                  onPressed: () =>
-                      onPick('customer@hotel.com', 'customer123'),
+                  onPressed: () => onPick('customer@hotel.com', 'customer123'),
                 ),
                 ActionChip(
                   avatar: const Icon(Icons.badge, size: 18),
