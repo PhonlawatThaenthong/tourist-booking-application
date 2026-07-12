@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/room.dart';
-import '../../providers/booking_provider.dart';
+import '../../blocs/booking_cubit.dart';
 import '../../utils/formatters.dart';
 import 'payment_screen.dart';
 
@@ -57,7 +57,7 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    final bookings = context.read<BookingProvider>();
+    final bookings = context.read<BookingCubit>();
     if (bookings.isRoomBooked(widget.room.id, _range!.start, _range!.end)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

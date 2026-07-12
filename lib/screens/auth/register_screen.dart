@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../providers/auth_provider.dart';
+import '../../blocs/auth_cubit.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -36,7 +36,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _loading = true;
       _error = null;
     });
-    final error = await context.read<AuthProvider>().register(
+    final error = await context.read<AuthCubit>().register(
           name: _nameCtrl.text,
           email: _emailCtrl.text,
           phone: _phoneCtrl.text,

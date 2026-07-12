@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/room.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/booking_provider.dart';
+import '../../blocs/auth_cubit.dart';
+import '../../blocs/booking_cubit.dart';
 import '../../services/notification_service.dart';
 import '../../utils/formatters.dart';
 import 'booking_confirmation_screen.dart';
@@ -56,8 +56,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
     setState(() => _processing = true);
 
-    final auth = context.read<AuthProvider>();
-    final bookings = context.read<BookingProvider>();
+    final auth = context.read<AuthCubit>();
+    final bookings = context.read<BookingCubit>();
     final user = auth.currentUser!;
 
     // Simulate contacting the payment gateway.

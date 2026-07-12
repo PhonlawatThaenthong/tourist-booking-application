@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/user.dart';
-import '../../providers/auth_provider.dart';
+import '../../blocs/auth_cubit.dart';
 import 'dashboard_screen.dart';
 import 'manage_bookings_screen.dart';
 import 'manage_rooms_screen.dart';
@@ -23,7 +23,7 @@ class _AdminHomeState extends State<AdminHome> {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().currentUser!;
+    final user = context.watch<AuthCubit>().currentUser!;
     final isAdmin = user.role == UserRole.admin;
 
     final destinations = <_NavItem>[
@@ -53,7 +53,7 @@ class _AdminHomeState extends State<AdminHome> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.account_circle),
             onSelected: (v) {
-              if (v == 'logout') context.read<AuthProvider>().logout();
+              if (v == 'logout') context.read<AuthCubit>().logout();
             },
             itemBuilder: (_) => [
               PopupMenuItem(

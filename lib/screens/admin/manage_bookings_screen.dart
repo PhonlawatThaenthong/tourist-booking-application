@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/booking.dart';
-import '../../providers/booking_provider.dart';
+import '../../blocs/booking_cubit.dart';
 import '../../utils/formatters.dart';
 
 /// Staff view to approve, cancel and reschedule bookings, filtered by status.
@@ -18,7 +18,7 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<BookingProvider>();
+    final provider = context.watch<BookingCubit>();
     final all = provider.all;
     final list = _filter == null
         ? all
@@ -90,7 +90,7 @@ class _AdminBookingCard extends StatelessWidget {
     );
     if (picked != null && context.mounted) {
       context
-          .read<BookingProvider>()
+          .read<BookingCubit>()
           .reschedule(booking.id, picked.start, picked.end);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Booking rescheduled')),
@@ -100,7 +100,7 @@ class _AdminBookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<BookingProvider>();
+    final provider = context.read<BookingCubit>();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),

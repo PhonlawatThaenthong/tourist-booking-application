@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/room.dart';
-import '../../providers/room_provider.dart';
+import '../../blocs/room_cubit.dart';
 
 /// Add or edit a room. When [existing] is null this creates a new room.
 class RoomFormScreen extends StatefulWidget {
@@ -52,7 +52,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    final provider = context.read<RoomProvider>();
+    final provider = context.read<RoomCubit>();
     final imageUrls = _images.text
         .split('\n')
         .map((s) => s.trim())

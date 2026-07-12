@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/restaurant.dart';
-import '../../providers/restaurant_provider.dart';
+import '../../blocs/restaurant_cubit.dart';
 import '../../services/maps_service.dart';
 
 /// Recommended nearby restaurants with one-tap directions via Google Maps.
@@ -11,7 +11,7 @@ class RestaurantsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final restaurants = context.watch<RestaurantProvider>().nearby;
+    final restaurants = context.watch<RestaurantCubit>().nearby;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nearby dining')),
@@ -54,14 +54,20 @@ class _RestaurantCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Text(restaurant.name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 18)),
+                      child: Text(
+                        restaurant.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
                     ),
                     Icon(Icons.star, color: Colors.amber.shade700, size: 18),
                     const SizedBox(width: 2),
-                    Text(restaurant.rating.toStringAsFixed(1),
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      restaurant.rating.toStringAsFixed(1),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -75,13 +81,20 @@ class _RestaurantCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.location_on_outlined,
-                        size: 16, color: Colors.grey.shade600),
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: Colors.grey.shade600,
+                    ),
                     const SizedBox(width: 4),
                     Expanded(
-                      child: Text(restaurant.address,
-                          style: TextStyle(
-                              color: Colors.grey.shade600, fontSize: 13)),
+                      child: Text(
+                        restaurant.address,
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
                   ],
                 ),

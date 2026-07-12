@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../config.dart';
 import '../models/user.dart';
-import '../providers/auth_provider.dart';
+import '../blocs/auth_cubit.dart';
 import '../theme.dart';
 import 'admin/admin_home.dart';
 import 'auth/login_screen.dart';
@@ -16,7 +16,7 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = context.watch<AuthCubit>();
 
     if (!auth.isInitialised) {
       return const Scaffold(

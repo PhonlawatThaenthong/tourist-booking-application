@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/booking.dart';
 import '../../models/room.dart';
-import '../../providers/booking_provider.dart';
-import '../../providers/room_provider.dart';
+import '../../blocs/booking_cubit.dart';
+import '../../blocs/room_cubit.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/stat_card.dart';
 
@@ -15,8 +15,8 @@ class ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bookings = context.watch<BookingProvider>();
-    final rooms = context.watch<RoomProvider>();
+    final bookings = context.watch<BookingCubit>();
+    final rooms = context.watch<RoomCubit>();
     final occupancy = bookings.occupancyRate(rooms.allRooms.length);
 
     final statusCounts = <BookingStatus, int>{

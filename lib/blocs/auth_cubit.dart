@@ -1,13 +1,19 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/mock_data.dart';
 import '../models/user.dart';
 
+class AuthState {
+  AuthState();
+}
+
 /// Handles registration, login, logout and session restoration. Acts as the
 /// in-memory user store (seeded from [MockData]).
-class AuthProvider extends ChangeNotifier {
+class AuthCubit extends Cubit<AuthState> {
+  AuthCubit() : super(AuthState());
+
   final List<AppUser> _users = MockData.users();
   AppUser? _currentUser;
   bool _initialised = false;
@@ -32,7 +38,7 @@ class AuthProvider extends ChangeNotifier {
       }
     }
     _initialised = true;
-    notifyListeners();
+    emit(AuthState());
   }
 
   /// Returns null on success, or an error message on failure.
@@ -48,7 +54,7 @@ class AuthProvider extends ChangeNotifier {
     }
     _currentUser = match.first;
     await _persist(_currentUser!.id);
-    notifyListeners();
+    emit(AuthState());
     return null;
   }
 
@@ -78,7 +84,7 @@ class AuthProvider extends ChangeNotifier {
     _users.add(user);
     _currentUser = user;
     await _persist(user.id);
-    notifyListeners();
+    emit(AuthState());
     return null;
   }
 
@@ -101,7 +107,7 @@ class AuthProvider extends ChangeNotifier {
       password: password,
       role: role,
     ));
-    notifyListeners();
+    emit(AuthState());
     return null;
   }
 
@@ -112,7 +118,7 @@ class AuthProvider extends ChangeNotifier {
       return 'You cannot delete your own account.';
     }
     _users.removeWhere((u) => u.id == id);
-    notifyListeners();
+    emit(AuthState());
     return null;
   }
 
@@ -120,7 +126,7 @@ class AuthProvider extends ChangeNotifier {
     _currentUser = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_prefsKey);
-    notifyListeners();
+    emit(AuthState());
   }
 
   Future<void> _persist(String id) async {

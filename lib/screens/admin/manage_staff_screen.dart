@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/user.dart';
-import '../../providers/auth_provider.dart';
+import '../../blocs/auth_cubit.dart';
 
 /// Admin-only: view staff/admin accounts and create new ones with a role
 /// (permission level).
@@ -11,7 +11,7 @@ class ManageStaffScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
+    final auth = context.watch<AuthCubit>();
     final staff = auth.staffUsers;
 
     return Scaffold(
@@ -79,7 +79,7 @@ class ManageStaffScreen extends StatelessWidget {
           ),
           TextButton(
             onPressed: () {
-              final error = context.read<AuthProvider>().deleteStaff(user.id);
+              final error = context.read<AuthCubit>().deleteStaff(user.id);
               Navigator.of(dialogContext).pop();
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(error ?? '${user.name} deleted')),
@@ -120,7 +120,7 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    final error = context.read<AuthProvider>().createStaff(
+    final error = context.read<AuthCubit>().createStaff(
       name: _name.text,
       email: _email.text,
       phone: _phone.text,

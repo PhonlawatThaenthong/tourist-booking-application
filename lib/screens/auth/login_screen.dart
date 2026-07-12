@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../config.dart';
-import '../../providers/auth_provider.dart';
+import '../../blocs/auth_cubit.dart';
 import '../../theme.dart';
 import 'register_screen.dart';
 
@@ -34,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
       _loading = true;
       _error = null;
     });
-    final error = await context.read<AuthProvider>().login(
+    final error = await context.read<AuthCubit>().login(
       _emailCtrl.text,
       _passwordCtrl.text,
     );

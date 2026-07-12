@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/mock_data.dart';
@@ -45,7 +45,13 @@ class RoomFilter {
   }
 }
 
-class RoomProvider extends ChangeNotifier {
+class RoomState {
+  RoomState();
+}
+
+class RoomCubit extends Cubit<RoomState> {
+  RoomCubit() : super(RoomState());
+
   final List<Room> _rooms = MockData.rooms();
 
   List<Room> get allRooms => List.unmodifiable(_rooms);
@@ -63,7 +69,7 @@ class RoomProvider extends ChangeNotifier {
     return match.isEmpty ? null : match.first;
   }
 
-  /// Real-time search. [isRoomBooked] lets the booking provider exclude rooms
+  /// Real-time search. [isRoomBooked] lets the booking cubit exclude rooms
   /// that are already reserved for the requested dates.
   List<Room> search(
     RoomFilter filter, {
@@ -119,14 +125,14 @@ class RoomProvider extends ChangeNotifier {
           : imageUrls,
       amenities: amenities,
     ));
-    notifyListeners();
+    emit(RoomState());
   }
 
   void updateRoom(Room room) {
     final i = _rooms.indexWhere((r) => r.id == room.id);
     if (i != -1) {
       _rooms[i] = room;
-      notifyListeners();
+      emit(RoomState());
     }
   }
 
@@ -134,7 +140,7 @@ class RoomProvider extends ChangeNotifier {
     final room = byId(id);
     if (room != null) {
       room.pricePerNight = price;
-      notifyListeners();
+      emit(RoomState());
     }
   }
 
@@ -142,12 +148,12 @@ class RoomProvider extends ChangeNotifier {
     final room = byId(id);
     if (room != null) {
       room.status = status;
-      notifyListeners();
+      emit(RoomState());
     }
   }
 
   void removeRoom(String id) {
     _rooms.removeWhere((r) => r.id == id);
-    notifyListeners();
+    emit(RoomState());
   }
 }

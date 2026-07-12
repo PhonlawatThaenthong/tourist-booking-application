@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hotel_booking/models/booking.dart';
-import 'package:hotel_booking/providers/booking_provider.dart';
+import 'package:hotel_booking/blocs/booking_cubit.dart';
 import 'package:hotel_booking/screens/auth/login_screen.dart';
 import 'package:hotel_booking/main.dart';
 
@@ -45,8 +45,8 @@ void main() {
   });
 
   test('Revenue counts only paid bookings from seed data', () {
-    final provider = BookingProvider();
-    expect(provider.totalRevenue, greaterThan(0));
-    expect(provider.totalBookings, greaterThan(0));
+    final cubit = BookingCubit();
+    expect(cubit.totalRevenue, greaterThan(0));
+    expect(cubit.totalBookings, greaterThan(0));
   });
 }

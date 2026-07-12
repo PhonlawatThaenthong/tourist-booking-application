@@ -1,10 +1,16 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/mock_data.dart';
 import '../models/booking.dart';
 
-class BookingProvider extends ChangeNotifier {
+class BookingState {
+  BookingState();
+}
+
+class BookingCubit extends Cubit<BookingState> {
+  BookingCubit() : super(BookingState());
+
   final List<Booking> _bookings = MockData.bookings();
 
   List<Booking> get all {
@@ -50,7 +56,7 @@ class BookingProvider extends ChangeNotifier {
       createdAt: DateTime.now(),
     );
     _bookings.add(booking);
-    notifyListeners();
+    emit(BookingState());
     return booking;
   }
 
@@ -91,14 +97,14 @@ class BookingProvider extends ChangeNotifier {
       paymentStatus: old.paymentStatus,
       createdAt: old.createdAt,
     );
-    notifyListeners();
+    emit(BookingState());
   }
 
   void _update(String id, void Function(Booking) change) {
     final i = _bookings.indexWhere((b) => b.id == id);
     if (i != -1) {
       change(_bookings[i]);
-      notifyListeners();
+      emit(BookingState());
     }
   }
 

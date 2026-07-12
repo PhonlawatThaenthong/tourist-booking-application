@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/booking.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/booking_provider.dart';
+import '../../blocs/auth_cubit.dart';
+import '../../blocs/booking_cubit.dart';
 import '../../utils/formatters.dart';
 
 class MyBookingsScreen extends StatelessWidget {
@@ -11,9 +11,10 @@ class MyBookingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthProvider>();
-    final bookings =
-        context.watch<BookingProvider>().forCustomer(auth.currentUser!.id);
+    final auth = context.watch<AuthCubit>();
+    final bookings = context.watch<BookingCubit>().forCustomer(
+      auth.currentUser!.id,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('My bookings')),
@@ -22,12 +23,17 @@ class MyBookingsScreen extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.luggage_outlined,
-                      size: 64, color: Colors.grey.shade400),
+                  Icon(
+                    Icons.luggage_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
                   const SizedBox(height: 12),
                   const Text('No bookings yet'),
-                  Text('Find a room to get started',
-                      style: TextStyle(color: Colors.grey.shade600)),
+                  Text(
+                    'Find a room to get started',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
                 ],
               ),
             )
@@ -66,30 +72,44 @@ class _BookingTile extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(booking.roomName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: Text(
+                    booking.roomName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _statusColor().withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(booking.status.label,
-                      style: TextStyle(
-                          color: _statusColor(),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12)),
+                  child: Text(
+                    booking.status.label,
+                    style: TextStyle(
+                      color: _statusColor(),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            _line(Icons.calendar_today,
-                '${Format.date(booking.checkIn)} → ${Format.date(booking.checkOut)}'),
-            _line(Icons.nights_stay, '${booking.nights} nights · '
-                '${booking.guests} guests'),
+            _line(
+              Icons.calendar_today,
+              '${Format.date(booking.checkIn)} → ${Format.date(booking.checkOut)}',
+            ),
+            _line(
+              Icons.nights_stay,
+              '${booking.nights} nights · '
+              '${booking.guests} guests',
+            ),
             _line(Icons.confirmation_number_outlined, 'Ref: ${booking.id}'),
             const Divider(),
             Row(
@@ -105,11 +125,14 @@ class _BookingTile extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                Text(Format.money(booking.totalPrice),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Color(0xFF00796B))),
+                Text(
+                  Format.money(booking.totalPrice),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF00796B),
+                  ),
+                ),
               ],
             ),
           ],

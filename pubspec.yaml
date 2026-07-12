@@ -36,7 +36,7 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # State management
-  provider: ^6.1.2
+  flutter_bloc: ^9.1.1
   # Date / currency formatting
   intl: ^0.20.2
   # Unique IDs for bookings/rooms

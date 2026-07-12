@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../config.dart';
 import '../../models/room.dart';
-import '../../providers/booking_provider.dart';
-import '../../providers/room_provider.dart';
+import '../../blocs/booking_cubit.dart';
+import '../../blocs/room_cubit.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/room_card.dart';
 import 'hotel_location_screen.dart';
@@ -28,8 +28,8 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final roomProvider = context.watch<RoomProvider>();
-    final bookings = context.watch<BookingProvider>();
+    final roomProvider = context.watch<RoomCubit>();
+    final bookings = context.watch<BookingCubit>();
 
     final minPrice = roomProvider.minRoomPrice;
     final maxPrice = roomProvider.maxRoomPrice;
