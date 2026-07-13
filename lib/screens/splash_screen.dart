@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../config.dart';
 import '../models/user.dart';
-import '../blocs/auth_cubit.dart';
+import '../blocs/auth/auth_bloc.dart';
 import '../theme.dart';
 import 'admin/admin_home.dart';
 import 'auth/login_screen.dart';
@@ -16,9 +16,9 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthCubit>();
+    final auth = context.watch<AuthBloc>().state;
 
-    if (!auth.isInitialised) {
+    if (!auth.initialised) {
       return const Scaffold(
         backgroundColor: AppTheme.primary,
         body: Center(

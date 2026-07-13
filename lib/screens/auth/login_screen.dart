@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../config.dart';
-import '../../blocs/auth_cubit.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_event.dart';
+import '../../blocs/auth/auth_state.dart';
 import '../../theme.dart';
 import 'register_screen.dart';
 
@@ -28,21 +30,15 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  void _submit() {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _loading = true;
       _error = null;
     });
-    final error = await context.read<AuthCubit>().login(
-      _emailCtrl.text,
-      _passwordCtrl.text,
+    context.read<AuthBloc>().add(
+      AuthLoginRequested(_emailCtrl.text, _passwordCtrl.text),
     );
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      _error = error;
-    });
     // On success, SplashScreen reacts to the auth change and routes onward.
   }
 
@@ -53,7 +49,18 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state.status == AuthStatus.failure) {
+          setState(() {
+            _loading = false;
+            _error = state.errorMessage;
+          });
+        } else if (state.status == AuthStatus.authenticated) {
+          setState(() => _loading = false);
+        }
+      },
+      child: Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -154,6 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

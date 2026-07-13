@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../models/booking.dart';
 import '../../models/room.dart';
-import '../../blocs/auth_cubit.dart';
-import '../../blocs/booking_cubit.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/booking/booking_event.dart';
+import '../../blocs/booking/booking_state.dart';
 import '../../services/notification_service.dart';
 import '../../utils/formatters.dart';
 import 'booking_confirmation_screen.dart';
@@ -56,25 +59,28 @@ class _PaymentScreenState extends State<PaymentScreen> {
     }
     setState(() => _processing = true);
 
-    final auth = context.read<AuthCubit>();
-    final bookings = context.read<BookingCubit>();
-    final user = auth.currentUser!;
+    final user = context.read<AuthBloc>().state.currentUser!;
 
     // Simulate contacting the payment gateway.
     await Future<void>.delayed(const Duration(milliseconds: 1500));
+    if (!mounted) return;
 
-    // Create + mark paid only after the (simulated) charge succeeds.
-    final booking = bookings.createBooking(
-      roomId: widget.room.id,
-      roomName: widget.room.name,
-      customerId: user.id,
-      customerName: user.name,
-      checkIn: widget.checkIn,
-      checkOut: widget.checkOut,
-      guests: widget.guests,
-      totalPrice: widget.total,
-    );
-    bookings.markPaid(booking.id);
+    // Create + mark paid only after the (simulated) charge succeeds. The
+    // BlocListener below reacts once the booking bloc emits it.
+    context.read<BookingBloc>().add(BookingCreateAndPayRequested(
+          roomId: widget.room.id,
+          roomName: widget.room.name,
+          customerId: user.id,
+          customerName: user.name,
+          checkIn: widget.checkIn,
+          checkOut: widget.checkOut,
+          guests: widget.guests,
+          totalPrice: widget.total,
+        ));
+  }
+
+  Future<void> _onBookingCreated(BuildContext context, Booking booking) async {
+    final user = context.read<AuthBloc>().state.currentUser!;
 
     // Fire the automatic email/SMS confirmation.
     final message = await NotificationService.sendBookingConfirmation(
@@ -83,7 +89,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       phone: user.phone,
     );
 
-    if (!mounted) return;
+    if (!context.mounted) return;
     Navigator.of(context).pushReplacement(MaterialPageRoute(
       builder: (_) => BookingConfirmationScreen(
         booking: booking,
@@ -96,7 +102,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<BookingBloc, BookingState>(
+      listener: (context, state) {
+        final booking = state.lastCreatedBooking;
+        if (booking != null) _onBookingCreated(context, booking);
+      },
+      child: Scaffold(
       appBar: AppBar(title: const Text('Secure payment')),
       body: AbsorbPointer(
         absorbing: _processing,
@@ -174,6 +185,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
               ? 'Processing…'
               : 'Pay ${Format.money(widget.total)}'),
         ),
+      ),
       ),
     );
   }

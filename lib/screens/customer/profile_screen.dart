@@ -3,7 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../config.dart';
 import '../../models/user.dart';
-import '../../blocs/auth_cubit.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_event.dart';
 import 'hotel_location_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -11,7 +12,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthCubit>();
+    final auth = context.watch<AuthBloc>().state;
     final user = auth.currentUser!;
 
     return Scaffold(
@@ -81,7 +82,8 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           OutlinedButton.icon(
-            onPressed: () => context.read<AuthCubit>().logout(),
+            onPressed: () =>
+                context.read<AuthBloc>().add(const AuthLogoutRequested()),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.red,
               minimumSize: const Size.fromHeight(50),

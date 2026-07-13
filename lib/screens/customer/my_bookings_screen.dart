@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/booking.dart';
-import '../../blocs/auth_cubit.dart';
-import '../../blocs/booking_cubit.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/booking/booking_bloc.dart';
 import '../../utils/formatters.dart';
 
 class MyBookingsScreen extends StatelessWidget {
@@ -11,8 +11,8 @@ class MyBookingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = context.watch<AuthCubit>();
-    final bookings = context.watch<BookingCubit>().forCustomer(
+    final auth = context.watch<AuthBloc>().state;
+    final bookings = context.watch<BookingBloc>().forCustomer(
       auth.currentUser!.id,
     );
 

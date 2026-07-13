@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/room.dart';
-import '../../blocs/room_cubit.dart';
+import '../../blocs/room/room_bloc.dart';
+import '../../blocs/room/room_event.dart';
 import '../../utils/formatters.dart';
 import 'room_form_screen.dart';
 
@@ -13,7 +14,7 @@ class ManageRoomsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<RoomCubit>();
+    final provider = context.watch<RoomBloc>();
     final rooms = provider.allRooms;
 
     return Scaffold(
@@ -63,7 +64,7 @@ class _RoomAdminCard extends StatelessWidget {
       ),
     );
     if (result != null && context.mounted) {
-      context.read<RoomCubit>().updatePrice(room.id, result);
+      context.read<RoomBloc>().add(RoomUpdatePriceRequested(room.id, result));
     }
   }
 
@@ -86,13 +87,13 @@ class _RoomAdminCard extends StatelessWidget {
       ),
     );
     if (ok == true && context.mounted) {
-      context.read<RoomCubit>().removeRoom(room.id);
+      context.read<RoomBloc>().add(RoomRemoveRequested(room.id));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<RoomCubit>();
+    final provider = context.read<RoomBloc>();
     final maintenance = room.status == RoomStatus.maintenance;
 
     return Card(
@@ -151,10 +152,10 @@ class _RoomAdminCard extends StatelessWidget {
                     const Text('Maintenance'),
                     Switch(
                       value: maintenance,
-                      onChanged: (v) => provider.setStatus(
+                      onChanged: (v) => provider.add(RoomSetStatusRequested(
                         room.id,
                         v ? RoomStatus.maintenance : RoomStatus.available,
-                      ),
+                      )),
                     ),
                   ],
                 ),

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/booking.dart';
-import '../../blocs/booking_cubit.dart';
-import '../../blocs/room_cubit.dart';
+import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/room/room_bloc.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/stat_card.dart';
 
@@ -13,8 +13,8 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bookings = context.watch<BookingCubit>();
-    final rooms = context.watch<RoomCubit>();
+    final bookings = context.watch<BookingBloc>();
+    final rooms = context.watch<RoomBloc>();
     final occupancy = bookings.occupancyRate(rooms.allRooms.length);
     final recent = bookings.all.take(5).toList();
 

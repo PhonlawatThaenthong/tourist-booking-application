@@ -2,7 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:hotel_booking/models/booking.dart';
-import 'package:hotel_booking/blocs/booking_cubit.dart';
+import 'package:hotel_booking/blocs/booking/booking_bloc.dart';
+import 'package:hotel_booking/blocs/booking/booking_event.dart';
 import 'package:hotel_booking/screens/auth/login_screen.dart';
 import 'package:hotel_booking/main.dart';
 
@@ -44,9 +45,10 @@ void main() {
         booking.overlaps(DateTime(2026, 1, 15), DateTime(2026, 1, 18)), false);
   });
 
-  test('Revenue counts only paid bookings from seed data', () {
-    final cubit = BookingCubit();
-    expect(cubit.totalRevenue, greaterThan(0));
-    expect(cubit.totalBookings, greaterThan(0));
+  test('Revenue counts only paid bookings from seed data', () async {
+    final bloc = BookingBloc()..add(const BookingStarted());
+    await bloc.stream.first;
+    expect(bloc.totalRevenue, greaterThan(0));
+    expect(bloc.totalBookings, greaterThan(0));
   });
 }

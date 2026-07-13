@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/booking.dart';
-import '../../blocs/booking_cubit.dart';
+import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/booking/booking_event.dart';
 import '../../utils/formatters.dart';
 
 /// Staff view to approve, cancel and reschedule bookings, filtered by status.
@@ -18,7 +19,7 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<BookingCubit>();
+    final provider = context.watch<BookingBloc>();
     final all = provider.all;
     final list = _filter == null
         ? all
@@ -90,8 +91,8 @@ class _AdminBookingCard extends StatelessWidget {
     );
     if (picked != null && context.mounted) {
       context
-          .read<BookingCubit>()
-          .reschedule(booking.id, picked.start, picked.end);
+          .read<BookingBloc>()
+          .add(BookingRescheduleRequested(booking.id, picked.start, picked.end));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Booking rescheduled')),
       );
@@ -100,7 +101,7 @@ class _AdminBookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.read<BookingCubit>();
+    final provider = context.read<BookingBloc>();
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -142,7 +143,8 @@ class _AdminBookingCard extends StatelessWidget {
                 children: [
                   if (booking.status == BookingStatus.pending)
                     FilledButton.icon(
-                      onPressed: () => provider.approve(booking.id),
+                      onPressed: () =>
+                          provider.add(BookingApproveRequested(booking.id)),
                       icon: const Icon(Icons.check, size: 18),
                       style: FilledButton.styleFrom(
                           minimumSize: const Size(0, 40)),
@@ -156,7 +158,8 @@ class _AdminBookingCard extends StatelessWidget {
                     label: const Text('Reschedule'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: () => provider.cancel(booking.id),
+                    onPressed: () =>
+                        provider.add(BookingCancelRequested(booking.id)),
                     icon: const Icon(Icons.close, size: 18),
                     style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,

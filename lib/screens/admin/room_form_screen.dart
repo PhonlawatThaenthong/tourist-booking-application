@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/room.dart';
-import '../../blocs/room_cubit.dart';
+import '../../blocs/room/room_bloc.dart';
+import '../../blocs/room/room_event.dart';
 
 /// Add or edit a room. When [existing] is null this creates a new room.
 class RoomFormScreen extends StatefulWidget {
@@ -52,7 +53,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
-    final provider = context.read<RoomCubit>();
+    final provider = context.read<RoomBloc>();
     final imageUrls = _images.text
         .split('\n')
         .map((s) => s.trim())
@@ -74,9 +75,9 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
         ..description = _description.text.trim()
         ..imageUrls = imageUrls.isEmpty ? r.imageUrls : imageUrls
         ..amenities = amenities;
-      provider.updateRoom(r);
+      provider.add(RoomUpdateRequested(r));
     } else {
-      provider.addRoom(
+      provider.add(RoomAddRequested(
         name: _name.text.trim(),
         type: _type,
         pricePerNight: double.parse(_price.text),
@@ -84,7 +85,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
         description: _description.text.trim(),
         imageUrls: imageUrls,
         amenities: amenities,
-      );
+      ));
     }
     Navigator.of(context).pop();
   }

@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'blocs/auth_cubit.dart';
-import 'blocs/booking_cubit.dart';
-import 'blocs/restaurant_cubit.dart';
-import 'blocs/room_cubit.dart';
+import 'blocs/auth/auth_bloc.dart';
+import 'blocs/auth/auth_event.dart';
+import 'blocs/booking/booking_bloc.dart';
+import 'blocs/booking/booking_event.dart';
+import 'blocs/restaurant/restaurant_bloc.dart';
+import 'blocs/restaurant/restaurant_event.dart';
+import 'blocs/room/room_bloc.dart';
+import 'blocs/room/room_event.dart';
 import 'screens/splash_screen.dart';
 import 'theme.dart';
 
@@ -20,10 +24,12 @@ class HotelBookingApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => AuthCubit()..init()),
-        BlocProvider(create: (_) => RoomCubit()),
-        BlocProvider(create: (_) => BookingCubit()),
-        BlocProvider(create: (_) => RestaurantCubit()),
+        BlocProvider(create: (_) => AuthBloc()..add(const AuthStarted())),
+        BlocProvider(create: (_) => RoomBloc()..add(const RoomStarted())),
+        BlocProvider(create: (_) => BookingBloc()..add(const BookingStarted())),
+        BlocProvider(
+          create: (_) => RestaurantBloc()..add(const RestaurantStarted()),
+        ),
       ],
       child: MaterialApp(
         title: 'Azure Bay Hotel',

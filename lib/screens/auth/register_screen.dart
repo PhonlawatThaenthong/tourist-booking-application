@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../blocs/auth_cubit.dart';
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_event.dart';
+import '../../blocs/auth/auth_state.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -30,32 +32,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  void _submit() {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _loading = true;
       _error = null;
     });
-    final error = await context.read<AuthCubit>().register(
+    context.read<AuthBloc>().add(AuthRegisterRequested(
           name: _nameCtrl.text,
           email: _emailCtrl.text,
           phone: _phoneCtrl.text,
           password: _passwordCtrl.text,
-        );
-    if (!mounted) return;
-    if (error == null) {
-      Navigator.of(context).pop(); // SplashScreen routes to the customer app.
-    } else {
-      setState(() {
-        _loading = false;
-        _error = error;
-      });
-    }
+        ));
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state.status == AuthStatus.failure) {
+          setState(() {
+            _loading = false;
+            _error = state.errorMessage;
+          });
+        } else if (state.status == AuthStatus.authenticated) {
+          Navigator.of(context).pop(); // SplashScreen routes to the customer app.
+        }
+      },
+      child: Scaffold(
       appBar: AppBar(title: const Text('Create account')),
       body: SafeArea(
         child: Center(
@@ -150,6 +154,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

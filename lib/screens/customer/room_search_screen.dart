@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../config.dart';
 import '../../models/room.dart';
-import '../../blocs/booking_cubit.dart';
-import '../../blocs/room_cubit.dart';
+import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/room/room_bloc.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/room_card.dart';
 import 'hotel_location_screen.dart';
@@ -28,8 +28,8 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final roomProvider = context.watch<RoomCubit>();
-    final bookings = context.watch<BookingCubit>();
+    final roomProvider = context.watch<RoomBloc>();
+    final bookings = context.watch<BookingBloc>();
 
     final minPrice = roomProvider.minRoomPrice;
     final maxPrice = roomProvider.maxRoomPrice;

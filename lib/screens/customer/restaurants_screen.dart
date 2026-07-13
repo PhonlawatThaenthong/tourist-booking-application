@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/restaurant.dart';
-import '../../blocs/restaurant_cubit.dart';
+import '../../blocs/restaurant/restaurant_bloc.dart';
 import '../../services/maps_service.dart';
 
 /// Recommended nearby restaurants with one-tap directions via Google Maps.
@@ -11,7 +11,7 @@ class RestaurantsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final restaurants = context.watch<RestaurantCubit>().nearby;
+    final restaurants = context.watch<RestaurantBloc>().nearby;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nearby dining')),
