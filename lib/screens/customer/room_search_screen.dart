@@ -61,65 +61,74 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          _FilterBar(
-            dateRange: _dateRange,
-            types: _types,
-            guests: _guests,
-            price: price,
-            minPrice: minPrice,
-            maxPrice: maxPrice,
-            onSearchChanged: (v) => setState(() => _query = v),
-            onPickDates: _pickDates,
-            onToggleType: (t) => setState(() {
-              _types.contains(t) ? _types.remove(t) : _types.add(t);
-            }),
-            onGuestsChanged: (g) => setState(() => _guests = g),
-            onPriceChanged: (r) => setState(() => _priceRange = r),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                Text('${results.length} room(s) available',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                const Spacer(),
-                if (_dateRange != null)
-                  Text(
-                    '${Format.date(_dateRange!.start)} → '
-                    '${Format.date(_dateRange!.end)}',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  ),
-              ],
+      body: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: _FilterBar(
+              dateRange: _dateRange,
+              types: _types,
+              guests: _guests,
+              price: price,
+              minPrice: minPrice,
+              maxPrice: maxPrice,
+              onSearchChanged: (v) => setState(() => _query = v),
+              onPickDates: _pickDates,
+              onToggleType: (t) => setState(() {
+                _types.contains(t) ? _types.remove(t) : _types.add(t);
+              }),
+              onGuestsChanged: (g) => setState(() => _guests = g),
+              onPriceChanged: (r) => setState(() => _priceRange = r),
             ),
           ),
-          Expanded(
-            child: results.isEmpty
-                ? const _EmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    itemCount: results.length,
-                    itemBuilder: (_, i) {
-                      final room = results[i];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: RoomCard(
-                          room: room,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => RoomDetailScreen(
-                                room: room,
-                                initialRange: _dateRange,
-                                initialGuests: _guests,
-                              ),
-                            ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Text('${results.length} room(s) available',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const Spacer(),
+                  if (_dateRange != null)
+                    Text(
+                      '${Format.date(_dateRange!.start)} → '
+                      '${Format.date(_dateRange!.end)}',
+                      style:
+                          TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          if (results.isEmpty)
+            const SliverFillRemaining(
+              hasScrollBody: false,
+              child: _EmptyState(),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              sliver: SliverList.builder(
+                itemCount: results.length,
+                itemBuilder: (_, i) {
+                  final room = results[i];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: RoomCard(
+                      room: room,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => RoomDetailScreen(
+                            room: room,
+                            initialRange: _dateRange,
+                            initialGuests: _guests,
                           ),
                         ),
-                      );
-                    },
-                  ),
-          ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );
