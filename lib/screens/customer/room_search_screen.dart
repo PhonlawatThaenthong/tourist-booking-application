@@ -141,6 +141,7 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: now.add(const Duration(days: 365)),
       initialDateRange: _dateRange,
+      locale: const Locale('en', 'GB'),
     );
     if (picked != null) setState(() => _dateRange = picked);
   }

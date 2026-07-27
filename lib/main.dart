@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'blocs/auth/auth_bloc.dart';
@@ -35,6 +36,13 @@ class HotelBookingApp extends StatelessWidget {
         title: 'Azure Bay Hotel',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: const [Locale('en', 'GB')],
+        locale: const Locale('en', 'GB'),
         home: const SplashScreen(),
       ),
     );
