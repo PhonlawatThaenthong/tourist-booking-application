@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/room.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/app_image.dart';
 import 'booking_screen.dart';
 
 class RoomDetailScreen extends StatefulWidget {
@@ -216,10 +217,10 @@ class _Image extends StatelessWidget {
         child: const Icon(Icons.king_bed, size: 64, color: Colors.grey),
       );
     }
-    return Image.network(
-      url,
+    return AppImage(
+      url: url,
       fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => Container(
+      errorBuilder: (_) => Container(
         color: Colors.grey.shade300,
         child: const Icon(Icons.broken_image, size: 64, color: Colors.grey),
       ),

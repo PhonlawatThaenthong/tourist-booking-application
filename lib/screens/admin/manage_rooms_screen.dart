@@ -5,6 +5,7 @@ import '../../models/room.dart';
 import '../../blocs/room/room_bloc.dart';
 import '../../blocs/room/room_event.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/app_image.dart';
 import 'room_form_screen.dart';
 
 /// Room inventory management: add/remove rooms, update price, toggle the
@@ -109,13 +110,9 @@ class _RoomAdminCard extends StatelessWidget {
                   child: SizedBox(
                     width: 72,
                     height: 72,
-                    child: Image.network(
-                      room.primaryImage,
+                    child: AppImage(
+                      url: room.primaryImage,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.king_bed_outlined),
-                      ),
                     ),
                   ),
                 ),

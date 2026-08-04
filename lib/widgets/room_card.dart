@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'app_image.dart';
+
 import '../models/room.dart';
 import '../utils/formatters.dart';
 
@@ -90,18 +92,7 @@ class _RoomImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty) return _placeholder();
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
-        return Container(
-          color: Colors.grey.shade200,
-          child: const Center(child: CircularProgressIndicator()),
-        );
-      },
-      errorBuilder: (_, _, _) => _placeholder(),
-    );
+    return AppImage(url: url, fit: BoxFit.cover);
   }
 
   Widget _placeholder() => Container(
