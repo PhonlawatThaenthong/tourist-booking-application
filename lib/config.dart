@@ -3,7 +3,7 @@
 class AppConfig {
   AppConfig._();
 
-  static const String hotelName = 'Azure Bay Hotel';
+  static const String hotelName = 'Poonsuk Resort';
 
   /// Hotel coordinates (sample location: Pattaya Beach, Thailand). Used to
   /// centre maps and compute "directions to the hotel" links.

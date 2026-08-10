@@ -1,4 +1,4 @@
-# Azure Bay Hotel — Flutter Booking App
+# Poonsuk Resort — Flutter Booking App
 
 A complete hotel reservation app built with Flutter, covering both a **Customer
 module** and an **Administrator / Staff module**. Built for a final project, it

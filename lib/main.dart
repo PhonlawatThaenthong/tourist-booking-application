@@ -10,6 +10,7 @@ import 'blocs/restaurant/restaurant_bloc.dart';
 import 'blocs/restaurant/restaurant_event.dart';
 import 'blocs/room/room_bloc.dart';
 import 'blocs/room/room_event.dart';
+import 'config.dart';
 import 'screens/splash_screen.dart';
 import 'theme.dart';
 
@@ -33,7 +34,7 @@ class HotelBookingApp extends StatelessWidget {
         ),
       ],
       child: MaterialApp(
-        title: 'Azure Bay Hotel',
+        title: AppConfig.hotelName,
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
         localizationsDelegates: const [
