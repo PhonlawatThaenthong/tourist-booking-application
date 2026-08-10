@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/room.dart';
+import '../../models/user.dart';
+import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/room/room_bloc.dart';
 import '../../blocs/room/room_event.dart';
 import '../../utils/formatters.dart';
@@ -9,7 +11,8 @@ import '../../widgets/app_image.dart';
 import 'room_form_screen.dart';
 
 /// Room inventory management: add/remove rooms, update price, toggle the
-/// maintenance status.
+/// maintenance status. Everyone on the staff side can view the room list;
+/// editing (price, details, maintenance, add/remove) is admin-only.
 class ManageRoomsScreen extends StatelessWidget {
   const ManageRoomsScreen({super.key});
 
@@ -17,27 +20,33 @@ class ManageRoomsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<RoomBloc>();
     final rooms = provider.allRooms;
+    final isAdmin =
+        context.watch<AuthBloc>().state.currentUser?.role == UserRole.admin;
 
     return Scaffold(
       body: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
         itemCount: rooms.length,
-        itemBuilder: (_, i) => _RoomAdminCard(room: rooms[i]),
+        itemBuilder: (_, i) =>
+            _RoomAdminCard(room: rooms[i], isAdmin: isAdmin),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const RoomFormScreen()),
-        ),
-        icon: const Icon(Icons.add),
-        label: const Text('Add room'),
-      ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const RoomFormScreen()),
+              ),
+              icon: const Icon(Icons.add),
+              label: const Text('Add room'),
+            )
+          : null,
     );
   }
 }
 
 class _RoomAdminCard extends StatelessWidget {
   final Room room;
-  const _RoomAdminCard({required this.room});
+  final bool isAdmin;
+  const _RoomAdminCard({required this.room, required this.isAdmin});
 
   Future<void> _editPrice(BuildContext context) async {
     final ctrl =
@@ -149,32 +158,38 @@ class _RoomAdminCard extends StatelessWidget {
                     const Text('Maintenance'),
                     Switch(
                       value: maintenance,
-                      onChanged: (v) => provider.add(RoomSetStatusRequested(
-                        room.id,
-                        v ? RoomStatus.maintenance : RoomStatus.available,
-                      )),
+                      onChanged: isAdmin
+                          ? (v) => provider.add(RoomSetStatusRequested(
+                                room.id,
+                                v
+                                    ? RoomStatus.maintenance
+                                    : RoomStatus.available,
+                              ))
+                          : null,
                     ),
                   ],
                 ),
                 const Spacer(),
-                IconButton(
-                  tooltip: 'Edit price',
-                  icon: const Icon(Icons.attach_money),
-                  onPressed: () => _editPrice(context),
-                ),
-                IconButton(
-                  tooltip: 'Edit room',
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => RoomFormScreen(existing: room)),
+                if (isAdmin) ...[
+                  IconButton(
+                    tooltip: 'Edit price',
+                    icon: const Icon(Icons.attach_money),
+                    onPressed: () => _editPrice(context),
                   ),
-                ),
-                IconButton(
-                  tooltip: 'Remove room',
-                  icon: const Icon(Icons.delete_outline, color: Colors.red),
-                  onPressed: () => _confirmDelete(context),
-                ),
+                  IconButton(
+                    tooltip: 'Edit room',
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => RoomFormScreen(existing: room)),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Remove room',
+                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                    onPressed: () => _confirmDelete(context),
+                  ),
+                ],
               ],
             ),
           ],

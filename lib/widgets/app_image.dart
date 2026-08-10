@@ -1,6 +1,10 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-/// Renders either a network image or local asset image depending on the URL string.
+/// Renders a network image, a bundled asset, or a local file (picked from
+/// the device/computer) depending on the shape of the URL string.
 class AppImage extends StatelessWidget {
   final String url;
   final BoxFit fit;
@@ -16,7 +20,12 @@ class AppImage extends StatelessWidget {
   });
 
   bool get _isNetwork =>
-      url.startsWith('http://') || url.startsWith('https://');
+      url.startsWith('http://') ||
+      url.startsWith('https://') ||
+      url.startsWith('blob:');
+
+  // Bundled assets are declared under the `image/` folder in pubspec.yaml.
+  bool get _isAsset => url.startsWith('image/');
 
   @override
   Widget build(BuildContext context) {
@@ -41,8 +50,21 @@ class AppImage extends StatelessWidget {
       );
     }
 
-    return Image.asset(
-      url,
+    if (_isAsset) {
+      return Image.asset(
+        url,
+        fit: fit,
+        errorBuilder: (ctx, err, stack) =>
+            errorBuilder?.call(ctx) ?? _defaultPlaceholder(),
+      );
+    }
+
+    // Anything else is a local file path picked from the device/computer.
+    if (kIsWeb) {
+      return errorBuilder?.call(context) ?? _defaultPlaceholder();
+    }
+    return Image.file(
+      File(url),
       fit: fit,
       errorBuilder: (ctx, err, stack) =>
           errorBuilder?.call(ctx) ?? _defaultPlaceholder(),

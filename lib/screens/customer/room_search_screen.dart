@@ -22,7 +22,7 @@ class RoomSearchScreen extends StatefulWidget {
 class _RoomSearchScreenState extends State<RoomSearchScreen> {
   DateTimeRange? _dateRange;
   final Set<RoomType> _types = {};
-  int _guests = 1;
+  final int _guests = 1;
   RangeValues? _priceRange;
   String _query = '';
 
@@ -67,7 +67,6 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
             child: _FilterBar(
               dateRange: _dateRange,
               types: _types,
-              guests: _guests,
               price: price,
               minPrice: minPrice,
               maxPrice: maxPrice,
@@ -76,7 +75,6 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
               onToggleType: (t) => setState(() {
                 _types.contains(t) ? _types.remove(t) : _types.add(t);
               }),
-              onGuestsChanged: (g) => setState(() => _guests = g),
               onPriceChanged: (r) => setState(() => _priceRange = r),
             ),
           ),
@@ -150,27 +148,23 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
 class _FilterBar extends StatelessWidget {
   final DateTimeRange? dateRange;
   final Set<RoomType> types;
-  final int guests;
   final RangeValues price;
   final double minPrice;
   final double maxPrice;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onPickDates;
   final ValueChanged<RoomType> onToggleType;
-  final ValueChanged<int> onGuestsChanged;
   final ValueChanged<RangeValues> onPriceChanged;
 
   const _FilterBar({
     required this.dateRange,
     required this.types,
-    required this.guests,
     required this.price,
     required this.minPrice,
     required this.maxPrice,
     required this.onSearchChanged,
     required this.onPickDates,
     required this.onToggleType,
-    required this.onGuestsChanged,
     required this.onPriceChanged,
   });
 
@@ -192,24 +186,19 @@ class _FilterBar extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onPickDates,
-                    icon: const Icon(Icons.calendar_today, size: 18),
-                    label: Text(
-                      dateRange == null
-                          ? 'Select dates'
-                          : '${Format.date(dateRange!.start)} - '
-                              '${Format.date(dateRange!.end)}',
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _GuestStepper(guests: guests, onChanged: onGuestsChanged),
-              ],
+            OutlinedButton.icon(
+              onPressed: onPickDates,
+              icon: const Icon(Icons.calendar_today, size: 18),
+              label: Text(
+                dateRange == null
+                    ? 'Select dates'
+                    : '${Format.date(dateRange!.start)} - '
+                        '${Format.date(dateRange!.end)}',
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size(double.infinity, 40),
+              ),
             ),
             const SizedBox(height: 8),
             SingleChildScrollView(
@@ -251,37 +240,6 @@ class _FilterBar extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _GuestStepper extends StatelessWidget {
-  final int guests;
-  final ValueChanged<int> onChanged;
-  const _GuestStepper({required this.guests, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.remove),
-            onPressed: guests > 1 ? () => onChanged(guests - 1) : null,
-          ),
-          Text('$guests', style: const TextStyle(fontWeight: FontWeight.bold)),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.add),
-            onPressed: guests < 10 ? () => onChanged(guests + 1) : null,
-          ),
-        ],
       ),
     );
   }

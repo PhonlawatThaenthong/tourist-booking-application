@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/booking.dart';
+import '../../models/user.dart';
+import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/booking/booking_bloc.dart';
 import '../../blocs/booking/booking_event.dart';
 import '../../utils/formatters.dart';
 
-/// Staff view to approve, cancel and reschedule bookings, filtered by status.
+/// Back-office view of bookings, filtered by status. Everyone on the staff
+/// side can view; approving, rescheduling and cancelling is admin-only.
 class ManageBookingsScreen extends StatefulWidget {
   const ManageBookingsScreen({super.key});
 
@@ -24,6 +27,8 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
     final list = _filter == null
         ? all
         : all.where((b) => b.status == _filter).toList();
+    final isAdmin =
+        context.watch<AuthBloc>().state.currentUser?.role == UserRole.admin;
 
     return Column(
       children: [
@@ -45,7 +50,8 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
               : ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   itemCount: list.length,
-                  itemBuilder: (_, i) => _AdminBookingCard(booking: list[i]),
+                  itemBuilder: (_, i) =>
+                      _AdminBookingCard(booking: list[i], isAdmin: isAdmin),
                 ),
         ),
       ],
@@ -67,7 +73,8 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
 
 class _AdminBookingCard extends StatelessWidget {
   final Booking booking;
-  const _AdminBookingCard({required this.booking});
+  final bool isAdmin;
+  const _AdminBookingCard({required this.booking, required this.isAdmin});
 
   Color _color() {
     switch (booking.status) {
@@ -79,6 +86,56 @@ class _AdminBookingCard extends StatelessWidget {
         return Colors.red;
     }
   }
+
+  void _showCustomerInfo(BuildContext context) {
+    final users = context.read<AuthBloc>().state.users;
+    AppUser? customer;
+    for (final u in users) {
+      if (u.id == booking.customerId) {
+        customer = u;
+        break;
+      }
+    }
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Customer details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _infoRow('Name', customer?.name ?? booking.customerName),
+            _infoRow('Email', customer?.email ?? '—'),
+            _infoRow('Phone', customer?.phone ?? '—'),
+            const Divider(height: 20),
+            _infoRow('Booking', booking.id),
+            _infoRow('Guests', '${booking.guests}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 70,
+              child: Text(label,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+            ),
+            Expanded(child: Text(value)),
+          ],
+        ),
+      );
 
   Future<void> _cancel(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -156,13 +213,30 @@ class _AdminBookingCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 6),
-            Text('Guest: ${booking.customerName} · ${booking.guests} guests'),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                      'Guest: ${booking.customerName} · ${booking.guests} guests'),
+                ),
+                TextButton.icon(
+                  onPressed: () => _showCustomerInfo(context),
+                  icon: const Icon(Icons.person_outline, size: 18),
+                  label: const Text('View customer'),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(0, 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ],
+            ),
             Text('${Format.date(booking.checkIn)} → '
                 '${Format.date(booking.checkOut)} (${booking.nights} nights)'),
             Text('${Format.money(booking.totalPrice)} · '
                 '${booking.paymentStatus.label}'),
             const SizedBox(height: 8),
-            if (booking.status != BookingStatus.cancelled)
+            if (isAdmin && booking.status != BookingStatus.cancelled)
               Wrap(
                 spacing: 8,
                 children: [

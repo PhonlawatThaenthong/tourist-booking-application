@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/user.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
+import 'booking_calendar_screen.dart';
 import 'dashboard_screen.dart';
 import 'manage_bookings_screen.dart';
 import 'manage_rooms_screen.dart';
@@ -31,6 +32,8 @@ class _AdminHomeState extends State<AdminHome> {
       const _NavItem(Icons.dashboard_outlined, Icons.dashboard, 'Dashboard'),
       const _NavItem(
           Icons.event_note_outlined, Icons.event_note, 'Bookings'),
+      const _NavItem(
+          Icons.calendar_month_outlined, Icons.calendar_month, 'Calendar'),
       const _NavItem(Icons.king_bed_outlined, Icons.king_bed, 'Rooms'),
       const _NavItem(Icons.bar_chart_outlined, Icons.bar_chart, 'Reports'),
       const _NavItem(Icons.group_outlined, Icons.group, 'Staff'),
@@ -39,6 +42,7 @@ class _AdminHomeState extends State<AdminHome> {
     final pages = <Widget>[
       const DashboardScreen(),
       const ManageBookingsScreen(),
+      const BookingCalendarScreen(),
       const ManageRoomsScreen(),
       const ReportsScreen(),
       const ManageStaffScreen(),
