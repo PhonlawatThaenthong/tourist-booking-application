@@ -11,7 +11,8 @@ import 'manage_staff_screen.dart';
 import 'reports_screen.dart';
 
 /// Back-office shell. Uses a NavigationRail on wide screens and a Drawer on
-/// phones. Staff management is restricted to admins (role-based permissions).
+/// phones. Everyone on the staff side can view the Staff tab; editing staff
+/// accounts (add/delete) is restricted to admins (role-based permissions).
 class AdminHome extends StatefulWidget {
   const AdminHome({super.key});
 
@@ -25,7 +26,6 @@ class _AdminHomeState extends State<AdminHome> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthBloc>().state.currentUser!;
-    final isAdmin = user.role == UserRole.admin;
 
     final destinations = <_NavItem>[
       const _NavItem(Icons.dashboard_outlined, Icons.dashboard, 'Dashboard'),
@@ -33,8 +33,7 @@ class _AdminHomeState extends State<AdminHome> {
           Icons.event_note_outlined, Icons.event_note, 'Bookings'),
       const _NavItem(Icons.king_bed_outlined, Icons.king_bed, 'Rooms'),
       const _NavItem(Icons.bar_chart_outlined, Icons.bar_chart, 'Reports'),
-      if (isAdmin)
-        const _NavItem(Icons.group_outlined, Icons.group, 'Staff'),
+      const _NavItem(Icons.group_outlined, Icons.group, 'Staff'),
     ];
 
     final pages = <Widget>[
@@ -42,7 +41,7 @@ class _AdminHomeState extends State<AdminHome> {
       const ManageBookingsScreen(),
       const ManageRoomsScreen(),
       const ReportsScreen(),
-      if (isAdmin) const ManageStaffScreen(),
+      const ManageStaffScreen(),
     ];
 
     if (_index >= pages.length) _index = 0;

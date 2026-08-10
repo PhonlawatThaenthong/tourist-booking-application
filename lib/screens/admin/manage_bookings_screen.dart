@@ -80,6 +80,31 @@ class _AdminBookingCard extends StatelessWidget {
     }
   }
 
+  Future<void> _cancel(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Cancel booking?'),
+        content: Text(
+            'Are you sure you want to cancel booking ${booking.id} for ${booking.customerName}? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('No'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Yes, cancel'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<BookingBloc>().add(BookingCancelRequested(booking.id));
+    }
+  }
+
   Future<void> _reschedule(BuildContext context) async {
     final now = DateTime.now();
     final picked = await showDateRangePicker(
@@ -158,8 +183,7 @@ class _AdminBookingCard extends StatelessWidget {
                     label: const Text('Reschedule'),
                   ),
                   OutlinedButton.icon(
-                    onPressed: () =>
-                        provider.add(BookingCancelRequested(booking.id)),
+                    onPressed: () => _cancel(context),
                     icon: const Icon(Icons.close, size: 18),
                     style: OutlinedButton.styleFrom(
                         foregroundColor: Colors.red,

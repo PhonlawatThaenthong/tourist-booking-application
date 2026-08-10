@@ -6,8 +6,8 @@ import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
 
-/// Admin-only: view staff/admin accounts and create new ones with a role
-/// (permission level).
+/// View staff/admin accounts. Everyone on the staff side can view this list;
+/// only admins can create or delete accounts.
 class ManageStaffScreen extends StatefulWidget {
   const ManageStaffScreen({super.key});
 
@@ -22,6 +22,7 @@ class _ManageStaffScreenState extends State<ManageStaffScreen> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthBloc>().state;
     final staff = auth.staffUsers;
+    final isAdmin = auth.currentUser?.role == UserRole.admin;
 
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
@@ -59,23 +60,26 @@ class _ManageStaffScreenState extends State<ManageStaffScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Chip(label: Text(u.role.label)),
-                    IconButton(
-                      icon:
-                          const Icon(Icons.delete_outline, color: Colors.red),
-                      tooltip: 'Delete account',
-                      onPressed: () => _confirmDelete(context, u),
-                    ),
+                    if (isAdmin)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline,
+                            color: Colors.red),
+                        tooltip: 'Delete account',
+                        onPressed: () => _confirmDelete(context, u),
+                      ),
                   ],
                 ),
               ),
             );
           },
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => _showAddStaff(context),
-          icon: const Icon(Icons.person_add),
-          label: const Text('Add staff'),
-        ),
+        floatingActionButton: isAdmin
+            ? FloatingActionButton.extended(
+                onPressed: () => _showAddStaff(context),
+                icon: const Icon(Icons.person_add),
+                label: const Text('Add staff'),
+              )
+            : null,
       ),
     );
   }
