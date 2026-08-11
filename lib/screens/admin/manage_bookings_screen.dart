@@ -144,15 +144,26 @@ class _AdminBookingCard extends StatelessWidget {
         title: const Text('Cancel booking?'),
         content: Text(
             'Are you sure you want to cancel booking ${booking.id} for ${booking.customerName}? This action cannot be undone.'),
+        actionsAlignment: MainAxisAlignment.center,
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('No'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Yes, cancel'),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('No'),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  textStyle: const TextStyle(fontSize: 13),
+                ),
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Yes, cancel'),
+              ),
+            ],
           ),
         ],
       ),
