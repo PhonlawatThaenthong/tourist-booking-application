@@ -195,7 +195,7 @@ class MockData {
       Booking(
         id: 'b-1001',
         roomId: 'r-205',
-        roomName: 'Deluxe Sea View 205',
+        roomName: 'P2',
         customerId: 'u-cust',
         customerName: 'Jane Customer',
         checkIn: DateTime(now.year, now.month, now.day + 3),
@@ -209,7 +209,7 @@ class MockData {
       Booking(
         id: 'b-1002',
         roomId: 'r-310',
-        roomName: 'Executive Suite 310',
+        roomName: 'P3',
         customerId: 'u-cust',
         customerName: 'Jane Customer',
         checkIn: DateTime(now.year, now.month, now.day + 10),

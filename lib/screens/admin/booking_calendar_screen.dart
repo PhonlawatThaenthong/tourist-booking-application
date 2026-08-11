@@ -285,8 +285,11 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                         }
                         final day =
                             DateTime(_month.year, _month.month, dayNum);
-                        final count = _bookingsOn(day, bookings).length;
+                        final roomCodes = _bookingsOn(day, bookings)
+                            .map((b) => b.roomName)
+                            .toList();
                         final isToday = day == today;
+                        const maxCodesShown = 3;
 
                         return Padding(
                           padding: const EdgeInsets.all(3),
@@ -301,30 +304,64 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                                     : null,
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    '$dayNum',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black87,
-                                    ),
-                                  ),
-                                  if (count > 0) ...[
-                                    const SizedBox(height: 2),
-                                    Container(
-                                      width: 6,
-                                      height: 6,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.orange.shade600,
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '$dayNum',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black87,
                                       ),
                                     ),
+                                    if (roomCodes.isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Wrap(
+                                        alignment: WrapAlignment.center,
+                                        spacing: 2,
+                                        runSpacing: 2,
+                                        children: [
+                                          for (final code
+                                              in roomCodes.take(maxCodesShown))
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 4,
+                                                vertical: 1,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.orange.shade100,
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                code,
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.orange.shade900,
+                                                ),
+                                              ),
+                                            ),
+                                          if (roomCodes.length > maxCodesShown)
+                                            Text(
+                                              '+${roomCodes.length - maxCodesShown}',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.orange.shade900,
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
                             ),
                           ),

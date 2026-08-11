@@ -21,6 +21,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _confirmCtrl = TextEditingController();
   bool _loading = false;
   String? _error;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
@@ -109,10 +111,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _passwordCtrl,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined),
+                          tooltip: _obscurePassword
+                              ? 'Show password'
+                              : 'Hide password',
+                          onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword),
+                        ),
                       ),
                       validator: (v) => (v == null || v.length < 6)
                           ? 'At least 6 characters'
@@ -121,10 +133,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 16),
                     TextFormField(
                       controller: _confirmCtrl,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: _obscureConfirm,
+                      decoration: InputDecoration(
                         labelText: 'Confirm password',
-                        prefixIcon: Icon(Icons.lock_outline),
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscureConfirm
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined),
+                          tooltip: _obscureConfirm
+                              ? 'Show password'
+                              : 'Hide password',
+                          onPressed: () => setState(
+                              () => _obscureConfirm = !_obscureConfirm),
+                        ),
                       ),
                       validator: (v) => (v != _passwordCtrl.text)
                           ? 'Passwords do not match'
