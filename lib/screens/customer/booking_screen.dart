@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/room.dart';
 import '../../blocs/booking/booking_bloc.dart';
 import '../../utils/formatters.dart';
+import 'date_selection_screen.dart';
 import 'payment_screen.dart';
 
 /// Step where the customer confirms dates, guests and reviews the price before
@@ -39,12 +40,10 @@ class _BookingScreenState extends State<BookingScreen> {
   double get _total => _nights * widget.room.pricePerNight;
 
   Future<void> _pickDates() async {
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: now.add(const Duration(days: 365)),
-      initialDateRange: _range,
+    final picked = await Navigator.of(context).push<DateTimeRange>(
+      MaterialPageRoute(
+        builder: (_) => DateSelectionScreen(initialRange: _range),
+      ),
     );
     if (picked != null) setState(() => _range = picked);
   }

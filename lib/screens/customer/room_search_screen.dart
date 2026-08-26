@@ -7,6 +7,7 @@ import '../../blocs/booking/booking_bloc.dart';
 import '../../blocs/room/room_bloc.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/room_card.dart';
+import 'date_selection_screen.dart';
 import 'hotel_location_screen.dart';
 import 'room_detail_screen.dart';
 
@@ -97,7 +98,12 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
               ),
             ),
           ),
-          if (results.isEmpty)
+          if (_dateRange == null)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: _NeedDatesState(onPickDates: _pickDates),
+            )
+          else if (results.isEmpty)
             const SliverFillRemaining(
               hasScrollBody: false,
               child: _EmptyState(),
@@ -133,13 +139,10 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
   }
 
   Future<void> _pickDates() async {
-    final now = DateTime.now();
-    final picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: now.add(const Duration(days: 365)),
-      initialDateRange: _dateRange,
-      locale: const Locale('en', 'GB'),
+    final picked = await Navigator.of(context).push<DateTimeRange>(
+      MaterialPageRoute(
+        builder: (_) => DateSelectionScreen(initialRange: _dateRange),
+      ),
     );
     if (picked != null) setState(() => _dateRange = picked);
   }
@@ -237,6 +240,36 @@ class _FilterBar extends StatelessWidget {
                 Format.money(price.end),
               ),
               onChanged: onPriceChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NeedDatesState extends StatelessWidget {
+  final VoidCallback onPickDates;
+  const _NeedDatesState({required this.onPickDates});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.calendar_month_outlined,
+                size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 12),
+            const Text('Select your dates to see available rooms',
+                textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: onPickDates,
+              icon: const Icon(Icons.calendar_today, size: 18),
+              label: const Text('Select dates'),
             ),
           ],
         ),
