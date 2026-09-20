@@ -1,7 +1,6 @@
 import {
-  BadRequestException, Controller, Get, NotFoundException, Query, StreamableFile,
+  BadRequestException, Controller, Get, Query, StreamableFile,
 } from '@nestjs/common';
-import { createReadStream, existsSync } from 'fs';
 import { getPaymentConfig } from '../../config/payment.config';
 
 // promptpay-qr is CommonJS with a default export function; qrcode is CommonJS
@@ -21,7 +20,7 @@ const QRCode = require('qrcode') as {
  * `GET /api/payment/qr?amount=1234.50` generates an EMVCo PromptPay payload for
  * the resort's PromptPay ID with the amount embedded, then renders it to a PNG.
  * No auth — the QR contains no secret, and the amount is a public figure the
- * app already shows. `GET /api/payment/qr-image` remains as a static fallback.
+ * app already shows.
  */
 @Controller('payment')
 export class PaymentInfoController {
@@ -51,14 +50,5 @@ export class PaymentInfoController {
     const payload = generatePayload(this.cfg.promptPayId, amt !== undefined ? { amount: amt } : {});
     const png = await QRCode.toBuffer(payload, { type: 'png', width: 512, margin: 1 });
     return new StreamableFile(png, { type: 'image/png' });
-  }
-
-  /** Static QR fallback (used only if a fixed image is configured). */
-  @Get('qr-image')
-  qrImage(): StreamableFile {
-    if (!existsSync(this.cfg.qrImagePath)) {
-      throw new NotFoundException('ยังไม่ได้ตั้งค่ารูป QR สำหรับการชำระเงิน');
-    }
-    return new StreamableFile(createReadStream(this.cfg.qrImagePath), { type: 'image/png' });
   }
 }

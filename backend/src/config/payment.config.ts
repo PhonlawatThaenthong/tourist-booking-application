@@ -6,14 +6,13 @@ import { join, isAbsolute } from 'path';
  * so there is no per-booking QR generation and no external gateway call.
  *
  * All values come from the environment so the account can be changed without a
- * rebuild. `PAYMENT_QR_IMAGE` and `UPLOAD_DIR` may be relative to the process
- * working directory or absolute.
+ * rebuild. `UPLOAD_DIR` may be relative to the process working directory or
+ * absolute. The QR itself is generated dynamically from `PAYMENT_PROMPTPAY_ID`.
  */
 export interface PaymentConfig {
   accountName: string;
   promptPayId: string;
   note: string;
-  qrImagePath: string;
   uploadDir: string;
   slipDir: string;
   maxSlipBytes: number;
@@ -30,7 +29,6 @@ export function getPaymentConfig(): PaymentConfig {
     promptPayId: process.env.PAYMENT_PROMPTPAY_ID ?? '000-000-0000',
     note: process.env.PAYMENT_NOTE
       ?? 'สแกน QR แล้วโอนตามยอดการจอง จากนั้นอัปโหลดสลิปเพื่อรอเจ้าหน้าที่ยืนยัน',
-    qrImagePath: resolvePath(process.env.PAYMENT_QR_IMAGE ?? './assets/payment-qr.png'),
     uploadDir,
     slipDir: join(uploadDir, 'slips'),
     maxSlipBytes: Number(process.env.PAYMENT_MAX_SLIP_BYTES ?? 5 * 1024 * 1024),
