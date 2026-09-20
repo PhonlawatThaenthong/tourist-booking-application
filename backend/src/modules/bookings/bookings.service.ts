@@ -2,6 +2,8 @@ import {
   BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { DataSource, QueryFailedError, Repository } from 'typeorm';
 import { Booking, BookingStatus, PaymentStatus } from './booking.entity';
 import { Room, RoomStatus } from '../rooms/room.entity';
@@ -15,6 +17,7 @@ import {
   UploadedSlip,
 } from '../payments/payment.response';
 import { NotificationsService } from '../notifications/notifications.service';
+import { BOOKING_EXPIRY_QUEUE, getBookingHoldMs } from '../../config/booking.config';
 
 /** Postgres SQLSTATEs that both mean "someone else got this range first". */
 const PG_EXCLUSION_VIOLATION = '23P01';
@@ -29,7 +32,10 @@ export class BookingsService {
     private readonly dataSource: DataSource,
     private readonly payments: PaymentsService,
     private readonly notifications: NotificationsService,
+    @InjectQueue(BOOKING_EXPIRY_QUEUE) private readonly expiryQueue: Queue,
   ) {}
+
+  private readonly holdMs = getBookingHoldMs();
 
   /**
    * `POST /api/bookings`.
@@ -76,10 +82,51 @@ export class BookingsService {
         return saved.id;
       });
 
+      await this.scheduleExpiry(id);
       return this.getOrFail(id);
     } catch (err) {
       throw this.translateConflict(err);
     }
+  }
+
+  /**
+   * Best-effort hold timer: schedule a delayed job to release the slot if the
+   * booking is never paid. Wrapped so a Redis outage never fails the booking —
+   * the slot just won't auto-release in that case.
+   */
+  private async scheduleExpiry(bookingId: string): Promise<void> {
+    try {
+      await this.expiryQueue.add(
+        'expire',
+        { bookingId },
+        {
+          delay: this.holdMs,
+          jobId: `expire:${bookingId}`,
+          removeOnComplete: true,
+          removeOnFail: true,
+        },
+      );
+    } catch {
+      // Redis unavailable — ignore; booking creation must still succeed.
+    }
+  }
+
+  /**
+   * Auto-cancel an abandoned booking. Runs from the delayed queue job. No-op
+   * unless the booking is still pending/unpaid with no slip uploaded, so a paid,
+   * cancelled, or awaiting-verification booking is never touched.
+   */
+  async expireIfUnpaid(bookingId: string): Promise<void> {
+    const booking = await this.repo.findOne({ where: { id: bookingId } });
+    if (!booking) return;
+    if (booking.status !== BookingStatus.PENDING
+      || booking.paymentStatus !== PaymentStatus.UNPAID) {
+      return;
+    }
+    const payment = await this.payments.findForBooking(bookingId);
+    if (payment && payment.slipPath) return; // slip uploaded — leave for staff
+    booking.status = BookingStatus.CANCELLED;
+    await this.repo.save(booking);
   }
 
   /** `GET /api/bookings/me` */
