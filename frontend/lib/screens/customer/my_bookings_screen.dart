@@ -4,11 +4,29 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/booking.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/booking/booking_event.dart';
 import '../../utils/formatters.dart';
 import 'payment_screen.dart';
 
-class MyBookingsScreen extends StatelessWidget {
+class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
+
+  @override
+  State<MyBookingsScreen> createState() => _MyBookingsScreenState();
+}
+
+class _MyBookingsScreenState extends State<MyBookingsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Re-fetch on open so an auto-cancelled hold no longer shows as Pending.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<BookingBloc>().add(const BookingStarted());
+    });
+  }
+
+  Future<void> _refresh() async =>
+      context.read<BookingBloc>().add(const BookingStarted());
 
   @override
   Widget build(BuildContext context) {
@@ -19,30 +37,30 @@ class MyBookingsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('My bookings')),
-      body: bookings.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: bookings.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 children: [
-                  Icon(
-                    Icons.luggage_outlined,
-                    size: 64,
-                    color: Colors.grey.shade400,
-                  ),
+                  const SizedBox(height: 100),
+                  Icon(Icons.luggage_outlined,
+                      size: 64, color: Colors.grey.shade400),
                   const SizedBox(height: 12),
-                  const Text('No bookings yet'),
-                  Text(
-                    'Find a room to get started',
-                    style: TextStyle(color: Colors.grey.shade600),
+                  const Center(child: Text('No bookings yet')),
+                  Center(
+                    child: Text('Find a room to get started',
+                        style: TextStyle(color: Colors.grey.shade600)),
                   ),
                 ],
+              )
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: bookings.length,
+                itemBuilder: (_, i) => _BookingTile(booking: bookings[i]),
               ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: bookings.length,
-              itemBuilder: (_, i) => _BookingTile(booking: bookings[i]),
-            ),
+      ),
     );
   }
 }

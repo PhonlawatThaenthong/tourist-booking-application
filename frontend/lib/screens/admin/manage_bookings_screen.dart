@@ -21,6 +21,16 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
   BookingStatus? _filter; // null = all
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<BookingBloc>().add(const BookingStarted());
+    });
+  }
+
+  void _refresh() => context.read<BookingBloc>().add(const BookingStarted());
+
+  @override
   Widget build(BuildContext context) {
     final provider = context.watch<BookingBloc>();
     final all = provider.all;
@@ -45,14 +55,24 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
           ),
         ),
         Expanded(
-          child: list.isEmpty
-              ? const Center(child: Text('No bookings in this category'))
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: list.length,
-                  itemBuilder: (_, i) =>
-                      _AdminBookingCard(booking: list[i], isAdmin: isAdmin),
-                ),
+          child: RefreshIndicator(
+            onRefresh: () async => _refresh(),
+            child: list.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 120),
+                      Center(child: Text('No bookings in this category')),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    itemCount: list.length,
+                    itemBuilder: (_, i) =>
+                        _AdminBookingCard(booking: list[i], isAdmin: isAdmin),
+                  ),
+          ),
         ),
       ],
     );

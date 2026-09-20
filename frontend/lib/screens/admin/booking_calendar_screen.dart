@@ -6,7 +6,9 @@ import '../../models/room.dart';
 import '../../models/user.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/booking/booking_event.dart';
 import '../../blocs/room/room_bloc.dart';
+import '../../blocs/room/room_event.dart';
 import '../../utils/formatters.dart';
 
 /// Month calendar view of room bookings — lets staff/admin see, per room,
@@ -29,6 +31,12 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
     super.initState();
     final now = DateTime.now();
     _month = DateTime(now.year, now.month);
+    // Re-fetch on open so auto-released holds are reflected without re-login.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<BookingBloc>().add(const BookingStarted());
+      context.read<RoomBloc>().add(const RoomStarted());
+    });
   }
 
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
