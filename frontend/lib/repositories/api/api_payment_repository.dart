@@ -27,6 +27,10 @@ class ApiPaymentRepository implements PaymentRepository {
   }
 
   @override
+  String qrUrl(double amount) =>
+      '${_api.baseUrl}/api/payment/qr?amount=${amount.toStringAsFixed(2)}';
+
+  @override
   Future<PaymentView> uploadSlip({
     required String bookingId,
     required List<int> bytes,

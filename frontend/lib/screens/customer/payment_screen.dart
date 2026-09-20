@@ -234,7 +234,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Widget _qrCard() {
-    final url = _info?.qrImageUrl ?? '';
+    // Dynamic PromptPay QR with the booking amount embedded.
+    final url = _amount > 0 ? _payments.qrUrl(_amount) : '';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(24),

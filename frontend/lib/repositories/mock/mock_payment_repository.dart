@@ -28,6 +28,9 @@ class MockPaymentRepository implements PaymentRepository {
       );
 
   @override
+  String qrUrl(double amount) => '';
+
+  @override
   Future<PaymentView> uploadSlip({
     required String bookingId,
     required List<int> bytes,

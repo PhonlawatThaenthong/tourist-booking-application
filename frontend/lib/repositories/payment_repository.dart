@@ -12,8 +12,12 @@ import '../models/payment.dart';
 ///  * `GET  /api/staff/payments/:id/slip`       — [fetchSlipBytes]
 ///  * `PATCH /api/staff/payments/:id`           — [verify]
 abstract class PaymentRepository {
-  /// The resort's static PromptPay QR + account details shown to the customer.
+  /// The resort's PromptPay account details shown to the customer.
   Future<PaymentInfo> fetchInfo();
+
+  /// Absolute URL of a dynamic PromptPay QR image with [amount] embedded
+  /// (backend renders it via promptpay-qr). Empty string in mock mode.
+  String qrUrl(double amount);
 
   /// Uploads a transfer slip for a booking. Moves the payment to
   /// `awaiting_verification`; it does NOT mark the booking paid.
