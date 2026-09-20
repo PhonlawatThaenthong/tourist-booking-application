@@ -47,6 +47,36 @@ export class RoomsService {
     return qb.orderBy('r.price_per_night', 'ASC').addOrderBy('r.name', 'ASC').getMany();
   }
 
+  /**
+   * Booked date-ranges (roomId + check-in/out only — no customer data) for all
+   * non-cancelled bookings overlapping [from, to). With no window, returns every
+   * live booking. Powers the customer-side availability views.
+   */
+  async bookedRanges(
+    from?: string,
+    to?: string,
+  ): Promise<{ roomId: string; checkIn: string; checkOut: string }[]> {
+    const iso = /^\d{4}-\d{2}-\d{2}$/;
+    if ((from && !iso.test(from)) || (to && !iso.test(to))) {
+      throw new BadRequestException('from/to ต้องเป็นวันที่รูปแบบ YYYY-MM-DD');
+    }
+    const windowed = Boolean(from && to);
+    return this.repo.manager.query(
+      `SELECT room_id AS "roomId",
+              check_in::text  AS "checkIn",
+              check_out::text AS "checkOut"
+         FROM bookings
+        WHERE status <> 'cancelled'
+          AND (
+            $1::boolean = false
+            OR daterange(check_in, check_out, '[)')
+               && daterange($2::date, $3::date, '[)')
+          )
+        ORDER BY room_id, check_in`,
+      [windowed, from ?? null, to ?? null],
+    );
+  }
+
   async getOrFail(id: string): Promise<Room> {
     const room = await this.repo.findOne({ where: { id } });
     if (!room) throw new NotFoundException('ไม่พบห้องพัก');
