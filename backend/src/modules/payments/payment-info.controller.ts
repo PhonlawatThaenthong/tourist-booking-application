@@ -2,6 +2,7 @@ import {
   BadRequestException, Controller, Get, Query, StreamableFile,
 } from '@nestjs/common';
 import { getPaymentConfig } from '../../config/payment.config';
+import { getBookingHoldMs } from '../../config/booking.config';
 
 // promptpay-qr is CommonJS with a default export function; qrcode is CommonJS
 // too. Loaded via require (with typed casts) so no esModuleInterop / @types are
@@ -34,6 +35,8 @@ export class PaymentInfoController {
       note: this.cfg.note,
       // Base URL; the app appends ?amount=<booking total> for a dynamic QR.
       qrImageUrl: '/api/payment/qr',
+      // How long an unpaid booking holds its room — drives the app countdown.
+      holdMinutes: Math.round(getBookingHoldMs() / 60000),
     };
   }
 

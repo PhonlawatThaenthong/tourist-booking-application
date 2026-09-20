@@ -12,3 +12,15 @@ export function getBookingHoldMs(): number {
   const safe = Number.isFinite(minutes) && minutes > 0 ? minutes : 3;
   return Math.round(safe * 60_000);
 }
+
+/**
+ * How often the safety-net sweeper flips expired unpaid holds to cancelled.
+ * Configurable via `BOOKING_SWEEP_SECONDS` (default 30). This runs independently
+ * of Redis/BullMQ so a slot is always released even if the per-booking job was
+ * lost (Redis down when the booking was created, or the app restarted).
+ */
+export function getBookingSweepMs(): number {
+  const seconds = Number(process.env.BOOKING_SWEEP_SECONDS ?? 30);
+  const safe = Number.isFinite(seconds) && seconds >= 5 ? seconds : 30;
+  return Math.round(safe * 1000);
+}

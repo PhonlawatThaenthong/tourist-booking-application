@@ -7,6 +7,7 @@ import { BookingsController } from './bookings.controller';
 import { StaffBookingsController } from './staff-bookings.controller';
 import { StaffPaymentActionsController } from './staff-payment-actions.controller';
 import { BookingExpiryProcessor } from './booking-expiry.processor';
+import { BookingExpirySweeper } from './booking-expiry.sweeper';
 import { RoomsModule } from '../rooms/rooms.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { NotificationsModule } from '../notifications/notifications.module';
@@ -21,7 +22,7 @@ import { BOOKING_EXPIRY_QUEUE } from '../../config/booking.config';
     NotificationsModule,
   ],
   controllers: [BookingsController, StaffBookingsController, StaffPaymentActionsController],
-  providers: [BookingsService, BookingExpiryProcessor],
+  providers: [BookingsService, BookingExpiryProcessor, BookingExpirySweeper],
   exports: [BookingsService],
 })
 export class BookingsModule {}
