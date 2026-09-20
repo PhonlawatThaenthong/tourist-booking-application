@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../models/booking.dart';
 import '../../models/room.dart';
-import '../../blocs/booking/booking_bloc.dart';
 import '../../blocs/room/room_bloc.dart';
 import '../../utils/formatters.dart';
 
@@ -46,16 +44,6 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
 
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
-  List<Booking> _bookingsOn(DateTime day, List<Booking> all) {
-    final d = _dateOnly(day);
-    return all.where((b) {
-      if (b.status == BookingStatus.cancelled) return false;
-      final checkIn = _dateOnly(b.checkIn);
-      final checkOut = _dateOnly(b.checkOut);
-      return !d.isBefore(checkIn) && d.isBefore(checkOut);
-    }).toList();
-  }
-
   void _changeMonth(int delta) {
     setState(() => _month = DateTime(_month.year, _month.month + delta));
   }
@@ -78,22 +66,17 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
   }
 
   void _showDayRooms(BuildContext context, DateTime day) {
-    final bookings = context.read<BookingBloc>().all;
-    final rooms = [...context.read<RoomBloc>().allRooms]
+    final roomBloc = context.read<RoomBloc>();
+    final rooms = [...roomBloc.allRooms]
       ..sort((a, b) => a.name.compareTo(b.name));
-    final dayBookings = _bookingsOn(day, bookings);
+    final bookedIds = roomBloc.bookedRoomIdsOn(day);
 
-    Booking? bookingForRoom(String roomId) {
-      for (final b in dayBookings) {
-        if (b.roomId == roomId) return b;
-      }
-      return null;
-    }
+    bool isBooked(String roomId) => bookedIds.contains(roomId);
 
     final bookedRooms = <Room>[];
     final availableRooms = <Room>[];
     for (final r in rooms) {
-      (bookingForRoom(r.id) != null ? bookedRooms : availableRooms).add(r);
+      (isBooked(r.id) ? bookedRooms : availableRooms).add(r);
     }
     final ordered = [...bookedRooms, ...availableRooms];
 
@@ -139,23 +122,22 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
                       itemCount: ordered.length,
                       itemBuilder: (_, i) {
                         final room = ordered[i];
-                        final booking = bookingForRoom(room.id);
+                        final booked = isBooked(room.id);
                         return Card(
                           child: ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: booking != null
+                              backgroundColor: booked
                                   ? Colors.orange.shade100
                                   : Colors.green.shade100,
                               child: Icon(
                                 Icons.king_bed_outlined,
-                                color: booking != null
+                                color: booked
                                     ? Colors.orange.shade700
                                     : Colors.green.shade700,
                               ),
                             ),
                             title: Text(room.name),
-                            subtitle: Text(
-                                booking == null ? 'Available' : 'Booked'),
+                            subtitle: Text(booked ? 'Booked' : 'Available'),
                           ),
                         );
                       },
@@ -179,8 +161,8 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bookings = context.watch<BookingBloc>().all;
-    final totalRooms = context.watch<RoomBloc>().allRooms.length;
+    final roomProvider = context.watch<RoomBloc>();
+    final totalRooms = roomProvider.allRooms.length;
 
     final firstOfMonth = DateTime(_month.year, _month.month, 1);
     final daysInMonth = DateTime(_month.year, _month.month + 1, 0).day;
@@ -279,7 +261,8 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
                         }
                         final day =
                             DateTime(_month.year, _month.month, dayNum);
-                        final bookedCount = _bookingsOn(day, bookings).length;
+                        final bookedCount =
+                            roomProvider.bookedRoomIdsOn(day).length;
                         final fullyBooked =
                             totalRooms > 0 && bookedCount >= totalRooms;
                         final isPast = day.isBefore(_today);

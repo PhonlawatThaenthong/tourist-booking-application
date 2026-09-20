@@ -50,3 +50,32 @@ class Room {
   String get primaryImage =>
       imageUrls.isNotEmpty ? imageUrls.first : '';
 }
+
+/// An anonymised booked date-range (no customer data) from
+/// `GET /api/rooms/availability`. Used to compute true availability across ALL
+/// customers on the client.
+class BookedRange {
+  final String roomId;
+  final DateTime checkIn;
+  final DateTime checkOut;
+
+  const BookedRange({
+    required this.roomId,
+    required this.checkIn,
+    required this.checkOut,
+  });
+
+  factory BookedRange.fromJson(Map<String, dynamic> json) => BookedRange(
+        roomId: json['roomId'] as String,
+        checkIn: DateTime.parse(json['checkIn'] as String),
+        checkOut: DateTime.parse(json['checkOut'] as String),
+      );
+
+  /// True if [day] falls within this range (half-open [checkIn, checkOut)).
+  bool covers(DateTime day) =>
+      !day.isBefore(checkIn) && day.isBefore(checkOut);
+
+  /// True if this range overlaps [ci, co) (half-open).
+  bool overlaps(DateTime ci, DateTime co) =>
+      ci.isBefore(checkOut) && checkIn.isBefore(co);
+}

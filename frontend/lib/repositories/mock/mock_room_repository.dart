@@ -18,6 +18,10 @@ class MockRoomRepository implements RoomRepository {
   Future<List<Room>> fetchRooms() async => List.unmodifiable(_rooms);
 
   @override
+  Future<List<BookedRange>> fetchBookedRanges({DateTime? from, DateTime? to}) async =>
+      const [];
+
+  @override
   Future<Room> createRoom({
     required String name,
     required RoomType type,

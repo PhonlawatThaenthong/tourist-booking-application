@@ -35,6 +35,23 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     return match.isEmpty ? null : match.first;
   }
 
+  /// Availability across ALL customers, computed from the anonymised booked
+  /// ranges — replaces the old client-side check that only saw own bookings.
+  bool isRoomBooked(String roomId, DateTime checkIn, DateTime checkOut) {
+    return state.bookedRanges.any(
+      (r) => r.roomId == roomId && r.overlaps(checkIn, checkOut),
+    );
+  }
+
+  /// Room ids that are booked on [day] (for the month calendar).
+  Set<String> bookedRoomIdsOn(DateTime day) {
+    final d = DateTime(day.year, day.month, day.day);
+    return state.bookedRanges
+        .where((r) => r.covers(d))
+        .map((r) => r.roomId)
+        .toSet();
+  }
+
   /// Real-time search. [isRoomBooked] lets the booking bloc exclude rooms
   /// that are already reserved for the requested dates.
   ///
@@ -72,7 +89,13 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
 
   Future<void> _onStarted(RoomStarted event, Emitter<RoomState> emit) async {
     try {
-      emit(state.copyWith(rooms: await _repository.fetchRooms()));
+      final now = DateTime.now();
+      final from = DateTime(now.year, now.month, now.day)
+          .subtract(const Duration(days: 1));
+      final to = from.add(const Duration(days: 400));
+      final rooms = await _repository.fetchRooms();
+      final ranges = await _repository.fetchBookedRanges(from: from, to: to);
+      emit(state.copyWith(rooms: rooms, bookedRanges: ranges));
     } on RepositoryException catch (e) {
       emit(state.copyWith(errorMessage: e.message));
     }

@@ -5,6 +5,10 @@ abstract class RoomRepository {
   /// Backend: `GET /api/rooms`.
   Future<List<Room>> fetchRooms();
 
+  /// Backend: `GET /api/rooms/availability?from=&to=`. Anonymised booked
+  /// date-ranges across all customers, for client-side availability.
+  Future<List<BookedRange>> fetchBookedRanges({DateTime? from, DateTime? to});
+
   /// Backend: `POST /api/staff/rooms`.
   Future<Room> createRoom({
     required String name,

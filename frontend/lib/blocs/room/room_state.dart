@@ -44,14 +44,26 @@ class RoomFilter {
 class RoomState {
   final List<Room> rooms;
 
+  /// Anonymised booked date-ranges across all customers (for availability).
+  final List<BookedRange> bookedRanges;
+
   /// Transient: set on the failing transition only, never carried forward.
   final String? errorMessage;
 
-  const RoomState({this.rooms = const [], this.errorMessage});
+  const RoomState({
+    this.rooms = const [],
+    this.bookedRanges = const [],
+    this.errorMessage,
+  });
 
-  RoomState copyWith({List<Room>? rooms, String? errorMessage}) {
+  RoomState copyWith({
+    List<Room>? rooms,
+    List<BookedRange>? bookedRanges,
+    String? errorMessage,
+  }) {
     return RoomState(
       rooms: rooms ?? this.rooms,
+      bookedRanges: bookedRanges ?? this.bookedRanges,
       errorMessage: errorMessage,
     );
   }

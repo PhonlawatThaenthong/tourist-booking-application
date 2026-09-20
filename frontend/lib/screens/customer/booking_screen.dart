@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/room.dart';
-import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/room/room_bloc.dart';
 import '../../utils/formatters.dart';
 import 'date_selection_screen.dart';
 import 'payment_screen.dart';
@@ -56,8 +56,8 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    final bookings = context.read<BookingBloc>();
-    if (bookings.isRoomBooked(widget.room.id, _range!.start, _range!.end)) {
+    final rooms = context.read<RoomBloc>();
+    if (rooms.isRoomBooked(widget.room.id, _range!.start, _range!.end)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('This room is already booked for those dates.'),

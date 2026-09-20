@@ -19,6 +19,21 @@ class ApiRoomRepository implements RoomRepository {
         .toList(growable: false);
   }
 
+  @override
+  Future<List<BookedRange>> fetchBookedRanges({DateTime? from, DateTime? to}) async {
+    final query = <String, String>{};
+    if (from != null) query['from'] = ymd(from);
+    if (to != null) query['to'] = ymd(to);
+    final data = await _api.get(
+      '/api/rooms/availability',
+      query: query.isEmpty ? null : query,
+      auth: false,
+    ) as List<dynamic>;
+    return data
+        .map((e) => BookedRange.fromJson(e as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
   /// Availability search. Not part of [RoomRepository] yet — the date-range
   /// screens still filter client-side — but the endpoint is the one the
   /// exclusion constraint agrees with, so move them onto this next.

@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../config.dart';
 import '../../models/room.dart';
-import '../../blocs/booking/booking_bloc.dart';
 import '../../blocs/room/room_bloc.dart';
+import '../../blocs/room/room_event.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/room_card.dart';
 import 'date_selection_screen.dart';
@@ -30,7 +30,6 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
   @override
   Widget build(BuildContext context) {
     final roomProvider = context.watch<RoomBloc>();
-    final bookings = context.watch<BookingBloc>();
 
     final minPrice = roomProvider.minRoomPrice;
     final maxPrice = roomProvider.maxRoomPrice;
@@ -47,7 +46,7 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
     );
 
     final results =
-        roomProvider.search(filter, isRoomBooked: bookings.isRoomBooked);
+        roomProvider.search(filter, isRoomBooked: roomProvider.isRoomBooked);
 
     return Scaffold(
       appBar: AppBar(
@@ -62,8 +61,11 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
           ),
         ],
       ),
-      body: CustomScrollView(
-        slivers: [
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
           SliverToBoxAdapter(
             child: _FilterBar(
               dateRange: _dateRange,
@@ -133,7 +135,8 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
                 },
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -145,6 +148,13 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
       ),
     );
     if (picked != null) setState(() => _dateRange = picked);
+  }
+
+  /// Re-fetch rooms and bookings so a slot released by an expired hold shows as
+  /// available again. Availability here is computed client-side from both.
+  Future<void> _refresh() async {
+    context.read<RoomBloc>().add(const RoomStarted());
+    await Future<void>.delayed(const Duration(milliseconds: 600));
   }
 }
 
