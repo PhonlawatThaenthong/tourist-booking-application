@@ -195,10 +195,18 @@ class _AdminBookingCard extends StatelessWidget {
 
   Future<void> _reschedule(BuildContext context) async {
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    // firstDate/lastDate must bracket the *existing* stay too, or
+    // showDateRangePicker's initialDateRange assertion fails whenever the
+    // booking's check-in is already in the past (or its check-out is more
+    // than a year out).
+    final firstDate =
+        booking.checkIn.isBefore(today) ? booking.checkIn : today;
+    final lastDate = today.add(const Duration(days: 365));
     final picked = await showDateRangePicker(
       context: context,
-      firstDate: DateTime(now.year, now.month, now.day),
-      lastDate: now.add(const Duration(days: 365)),
+      firstDate: firstDate,
+      lastDate: booking.checkOut.isAfter(lastDate) ? booking.checkOut : lastDate,
       initialDateRange:
           DateTimeRange(start: booking.checkIn, end: booking.checkOut),
     );
