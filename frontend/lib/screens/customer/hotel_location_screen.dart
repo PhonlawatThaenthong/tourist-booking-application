@@ -1,25 +1,35 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../config.dart';
 import '../../services/maps_service.dart';
 
-/// Hotel location page. Uses the Google Maps Static API for a preview image and
-/// deep-links into Google Maps for an interactive map and directions.
+/// Hotel location page. Embeds the resort's Google Maps "Embed a map" iframe
+/// for an interactive in-app preview and deep-links into Google Maps for
+/// turn-by-turn directions.
 ///
-/// Note: the static map renders fully once a Google Maps API key is supplied
-/// (see [_staticMapUrl]); without a key Google returns a "for development only"
-/// watermarked tile, and the buttons below still open the full Google Maps app.
-class HotelLocationScreen extends StatelessWidget {
+/// The embed URL needs no API key (unlike the Static/JS Maps APIs), so the
+/// preview always renders — no watermark, no billing account required.
+class HotelLocationScreen extends StatefulWidget {
   const HotelLocationScreen({super.key});
 
-  static const String _mapsApiKey = String.fromEnvironment('MAPS_API_KEY');
+  @override
+  State<HotelLocationScreen> createState() => _HotelLocationScreenState();
+}
 
-  String get _staticMapUrl {
-    final base = 'https://maps.googleapis.com/maps/api/staticmap'
-        '?center=${AppConfig.hotelLat},${AppConfig.hotelLng}'
-        '&zoom=15&size=640x360&scale=2'
-        '&markers=color:red%7C${AppConfig.hotelLat},${AppConfig.hotelLng}';
-    return _mapsApiKey.isEmpty ? base : '$base&key=$_mapsApiKey';
+class _HotelLocationScreenState extends State<HotelLocationScreen> {
+  late final WebViewController _mapController = _buildMapController();
+
+  // webview_flutter_web renders a plain <iframe>, which has no notion of a
+  // separate "JavaScript mode" to toggle — its JS always runs — so calling
+  // setJavaScriptMode there throws UnimplementedError. Android/iOS need it
+  // set explicitly, since the Maps embed requires JS to render.
+  static WebViewController _buildMapController() {
+    final controller = WebViewController();
+    if (!kIsWeb) controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+    controller.loadRequest(Uri.parse(AppConfig.hotelMapEmbedUrl));
+    return controller;
   }
 
   @override
@@ -33,23 +43,7 @@ class HotelLocationScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             child: AspectRatio(
               aspectRatio: 16 / 9,
-              child: Image.network(
-                _staticMapUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  color: Colors.teal.shade50,
-                  child: const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.map, size: 56, color: Colors.teal),
-                        SizedBox(height: 8),
-                        Text('Map preview'),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              child: WebViewWidget(controller: _mapController),
             ),
           ),
           const SizedBox(height: 20),
@@ -78,6 +72,7 @@ class HotelLocationScreen extends StatelessWidget {
               lat: AppConfig.hotelLat,
               lng: AppConfig.hotelLng,
               label: AppConfig.hotelName,
+              address: AppConfig.hotelPlaceName,
             ),
             style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(50)),

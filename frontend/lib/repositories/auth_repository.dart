@@ -46,4 +46,18 @@ abstract class AuthRepository {
 
   /// Backend: `POST /api/auth/logout`.
   Future<void> clearSession();
+
+  /// Backend: `POST /api/auth/forgot-password`. Always succeeds — the server
+  /// answers identically whether or not the email is registered, and emails
+  /// a 6-digit code when it is.
+  Future<void> forgotPassword({required String email});
+
+  /// Backend: `POST /api/auth/reset-password`.
+  /// Throws [RepositoryException] when the code is wrong, expired, or the
+  /// email has none pending.
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  });
 }
