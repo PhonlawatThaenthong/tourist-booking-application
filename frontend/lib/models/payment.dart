@@ -55,11 +55,15 @@ class PaymentInfo {
   /// Absolute URL to the QR image (public, no auth). Empty in mock mode.
   final String qrImageUrl;
 
+  /// Minutes an unpaid booking holds its room (drives the payment countdown).
+  final int holdMinutes;
+
   const PaymentInfo({
     required this.accountName,
     required this.promptPayId,
     required this.note,
     required this.qrImageUrl,
+    this.holdMinutes = 3,
   });
 }
 

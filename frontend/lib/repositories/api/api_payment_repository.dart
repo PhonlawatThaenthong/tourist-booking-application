@@ -23,6 +23,7 @@ class ApiPaymentRepository implements PaymentRepository {
       note: (data['note'] as String?) ?? '',
       // The API returns a relative path; make it absolute for Image.network.
       qrImageUrl: rel.isEmpty ? '' : '${_api.baseUrl}$rel',
+      holdMinutes: (data['holdMinutes'] as num?)?.toInt() ?? 3,
     );
   }
 

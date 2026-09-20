@@ -25,6 +25,7 @@ class MockPaymentRepository implements PaymentRepository {
         promptPayId: '000-000-0000',
         note: 'สแกน QR แล้วโอนตามยอด จากนั้นอัปโหลดสลิปเพื่อรอเจ้าหน้าที่ยืนยัน',
         qrImageUrl: '',
+        holdMinutes: 3,
       );
 
   @override

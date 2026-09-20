@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -55,6 +57,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _uploading = false;
   String? _fatalError;
 
+  // Hold countdown: how long the room is reserved before auto-cancel.
+  Timer? _ticker;
+  Duration _remaining = Duration.zero;
+  bool _expired = false;
+
   @override
   void initState() {
     super.initState();
@@ -87,10 +94,60 @@ class _PaymentScreenState extends State<PaymentScreen> {
   double get _amount =>
       _booking?.totalPrice ?? widget.total ?? _payment?.amount ?? 0;
 
+  @override
+  void dispose() {
+    _ticker?.cancel();
+    super.dispose();
+  }
+
+  /// Starts (once) the hold countdown when a booking + info are available and
+  /// no slip has been uploaded yet. Stops it otherwise.
+  void _maybeStartCountdown() {
+    final booking = _booking;
+    final info = _info;
+    if (booking == null || info == null) return;
+
+    final status = _payment?.status;
+    final holdApplies = status == null ||
+        status == PaymentState.pending ||
+        status == PaymentState.rejected;
+    if (!holdApplies) {
+      _stopCountdown();
+      return;
+    }
+    if (_ticker != null) return; // already running
+
+    final deadline = booking.createdAt.add(Duration(minutes: info.holdMinutes));
+    void update() {
+      if (!mounted) return;
+      final rem = deadline.difference(DateTime.now());
+      if (rem.inSeconds <= 0) {
+        setState(() {
+          _remaining = Duration.zero;
+          _expired = true;
+        });
+        _stopCountdown();
+      } else {
+        setState(() => _remaining = rem);
+      }
+    }
+
+    update();
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => update());
+  }
+
+  void _stopCountdown() {
+    _ticker?.cancel();
+    _ticker = null;
+  }
+
   Future<void> _loadInfo() async {
     try {
       final info = await _payments.fetchInfo();
-      if (mounted) setState(() => _info = info);
+      if (mounted) {
+        setState(() => _info = info);
+        _maybeStartCountdown();
+      }
     } on RepositoryException {
       // QR info is non-critical; the amount + account text still render.
     }
@@ -101,7 +158,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (booking == null) return;
     try {
       final p = await _payments.fetchForBooking(booking.id);
-      if (mounted) setState(() => _payment = p);
+      if (mounted) {
+        setState(() => _payment = p);
+        _maybeStartCountdown();
+      }
     } on RepositoryException {
       // No payment yet, or transient — the QR + upload UI still shows.
     }
@@ -138,6 +198,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         _payment = view;
         _uploading = false;
       });
+      _maybeStartCountdown();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Slip uploaded — awaiting staff confirmation.')),
       );
@@ -198,8 +259,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
             _confirmedCard()
           else if (status == PaymentState.awaitingVerification)
             _awaitingCard()
+          else if (_expired)
+            _expiredCard()
           else ...[
             if (status == PaymentState.rejected) _rejectedBanner(),
+            _countdownBanner(),
             _qrCard(),
             const SizedBox(height: 16),
             _uploadButton(),
@@ -230,6 +294,68 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _countdownBanner() {
+    final m = _remaining.inMinutes.toString().padLeft(2, '0');
+    final sec = (_remaining.inSeconds % 60).toString().padLeft(2, '0');
+    final warn = _remaining.inSeconds <= 60;
+    final color = warn ? Colors.red : Colors.orange.shade800;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.timer_outlined, color: color, size: 20),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text('Pay and upload your slip within',
+                style: TextStyle(fontSize: 13)),
+          ),
+          Text('$m:$sec',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, fontSize: 20, color: color)),
+        ],
+      ),
+    );
+  }
+
+  Widget _expiredCard() {
+    return Column(
+      children: [
+        Card(
+          color: Colors.red.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                Icon(Icons.timer_off, color: Colors.red.shade600, size: 56),
+                const SizedBox(height: 12),
+                const Text('Payment time expired',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 6),
+                Text(
+                  'This booking was released so others can book the room. '
+                  'Please search and book again.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        FilledButton(
+          onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
+          child: const Text('Back to home'),
+        ),
+      ],
     );
   }
 
