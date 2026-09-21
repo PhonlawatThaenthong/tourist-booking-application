@@ -64,3 +64,26 @@ jobs:
           path: frontend/build/app/outputs/flutter-apk/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+      # --obfuscate ทำให้ชื่อคลาส/เมธอดใน release APK กลายเป็นขยะ — Sentry อ่าน
+      # stack trace ไม่ออก ถ้าไม่มี debug-info + obfuscation map สองไฟล์นี้
+      # ต้องเกิดจาก build รอบเดียวกับที่อัปโหลด (คนละ build = คนละ debug ID)
+      - name: Build release APK (obfuscated)
+        run: |
+          flutter build apk --release \
+            --obfuscate \
+            --split-debug-info=build/debug-info \
+            --extra-gen-snapshot-options=--save-obfuscation-map=build/app/obfuscation.map.json \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+            --dart-define=SENTRY_ENVIRONMENT=ci \
+            --dart-define=SENTRY_RELEASE=${{ github.sha }}
+
+      # ต้องรันต่อจาก step บนทันที และใน job เดียวกัน — path ที่ plugin อ่าน
+      # (symbols_path / dart_symbol_map_path ใน pubspec.yaml) คือผลลัพธ์ของ build
+      # SENTRY_RELEASE ต้องตรงกับ --dart-define ข้างบน ไม่งั้น artifact ไปผูกกับ
+      # release คนละตัวกับที่แอปรายงาน
+      - name: Upload debug symbols to Sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_RELEASE: ${{ github.sha }}
+        run: dart run sentry_dart_plugin

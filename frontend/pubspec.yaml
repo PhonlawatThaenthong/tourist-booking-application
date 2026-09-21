@@ -85,7 +85,24 @@ sentry:
   project: mobile-app
   upload_debug_symbols: true
   upload_sources: true
-  upload_source_maps: true
+  # Must match --split-debug-info in the build command. Left unset the plugin
+  # scans the whole project directory ('.') instead.
+  symbols_path: build/debug-info
+  # A FILE, not a directory, and it has no default: without it the plugin logs
+  # a warning and skips the obfuscation map entirely — which is the one
+  # artifact that turns obfuscated Dart frames back into readable names.
+  # Must match --save-obfuscation-map in the build command.
+  dart_symbol_map_path: build/app/obfuscation.map.json
+  # Web-only, and CI builds an APK. Leaving it on makes the plugin look for a
+  # build/web that was never produced.
+  upload_source_maps: false
+  # Block until Sentry has processed the upload, so a rejected artifact fails
+  # the CI step instead of passing quietly.
+  wait_for_processing: true
+  # Default is 'auto', which runs `sentry-cli releases set-commits --auto` and
+  # needs a GitHub repo integration configured in Sentry. Turn this on once
+  # that exists — it is what makes suspect commits work.
+  commits: 'false'
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
