@@ -20,6 +20,23 @@ class AppConfig {
     defaultValue: 'http://localhost:3000',
   );
 
+  /// Sentry DSN. Empty by default, which switches Sentry off entirely — that
+  /// is what `flutter run` and CI use, so crashes from a dev machine never
+  /// reach the project. The release pipeline compiles the real value in:
+  ///
+  ///   flutter build apk --dart-define=SENTRY_DSN=https://...
+  ///
+  /// A DSN is a public value by design (it only permits sending events, never
+  /// reading them), so shipping it inside the binary is safe.
+  static const String sentryDsn = String.fromEnvironment('SENTRY_DSN');
+
+  /// Tags every event, so noise from test builds can be filtered out of the
+  /// issue list instead of being mistaken for something real users hit.
+  static const String sentryEnvironment = String.fromEnvironment(
+    'SENTRY_ENVIRONMENT',
+    defaultValue: 'development',
+  );
+
   /// Hotel coordinates, taken from the "Poonsuk Resort@Sadao" Google Maps
   /// place pin. Used to centre the static map preview and to anchor the
   /// "Open in Google Maps" / "Get directions" links (alongside

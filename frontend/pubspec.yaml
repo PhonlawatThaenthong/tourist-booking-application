@@ -57,6 +57,7 @@ dependencies:
   # Embeds the resort's Google Maps location (Profile > Hotel location)
   webview_flutter: ^4.10.0
   webview_flutter_web: ^0.2.3+4
+  sentry_flutter: ^9.30.0
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +69,23 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # Uploads the Dart obfuscation map and split debug info to Sentry. Without
+  # it, a release APK built with --obfuscate reports crashes as meaningless
+  # symbol soup. Run `dart run sentry_dart_plugin` immediately after the
+  # build, in the same job — see the `sentry:` block below.
+  sentry_dart_plugin: ^3.2.1
+
+# Config for sentry_dart_plugin (see dev_dependencies above).
+# The auth token is deliberately absent: the plugin reads SENTRY_AUTH_TOKEN
+# from the environment, and unlike the DSN that token DOES grant write access
+# to the project — it must never be committed or compiled into the app.
+sentry:
+  org: tourist-booking-app
+  project: mobile-app
+  upload_debug_symbols: true
+  upload_sources: true
+  upload_source_maps: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

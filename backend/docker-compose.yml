@@ -12,6 +12,14 @@ services:
       REDIS_URL: redis://redis:6379
       # Slip uploads live on a named volume so they survive redeploys.
       UPLOAD_DIR: /app/uploads
+      # Overrides the `development` in .env — without this, every error from
+      # the deployed API lands in Sentry tagged as if it came from a laptop.
+      SENTRY_ENVIRONMENT: production
+      # Ties an issue to the exact commit that produced it, which is what
+      # makes "which deploy introduced this?" answerable. Export it before
+      # `docker compose up`:
+      #   SENTRY_RELEASE=$(git rev-parse HEAD) docker compose up -d --build
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
     ports:
       - "3000:3000"
     volumes:
