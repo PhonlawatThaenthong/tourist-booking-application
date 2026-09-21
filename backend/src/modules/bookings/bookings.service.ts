@@ -19,9 +19,20 @@ import {
 import { NotificationsService } from '../notifications/notifications.service';
 import { BOOKING_EXPIRY_QUEUE, getBookingHoldMs } from '../../config/booking.config';
 
-/** Postgres SQLSTATEs that both mean "someone else got this range first". */
+/** Postgres SQLSTATEs that all mean "someone else got this range first". */
 const PG_EXCLUSION_VIOLATION = '23P01';
 const PG_SERIALIZATION_FAILURE = '40001';
+// Two concurrent inserts can grab the GiST index pages in opposite orders, in
+// which case Postgres breaks the tie by killing one with a deadlock instead of
+// the exclusion violation above. Same outcome for the caller — they lost the
+// race — so it must map to the same 409, not fall through as an unhandled 500.
+const PG_DEADLOCK_DETECTED = '40P01';
+
+const PG_LOST_THE_RACE = new Set<string>([
+  PG_EXCLUSION_VIOLATION,
+  PG_SERIALIZATION_FAILURE,
+  PG_DEADLOCK_DETECTED,
+]);
 
 const RELATIONS = { room: true, customer: true } as const;
 
@@ -302,13 +313,13 @@ export class BookingsService {
   }
 
   /**
-   * Turns the two "you lost the race" SQLSTATEs into a 409 the Flutter
+   * Turns the "you lost the race" SQLSTATEs into a 409 the Flutter
    * `RepositoryException(statusCode: 409)` already knows how to display.
    */
   private translateConflict(err: unknown): unknown {
     if (err instanceof QueryFailedError) {
       const code = (err.driverError as { code?: string }).code;
-      if (code === PG_EXCLUSION_VIOLATION || code === PG_SERIALIZATION_FAILURE) {
+      if (code !== undefined && PG_LOST_THE_RACE.has(code)) {
         return new ConflictException('ห้องนี้ถูกจองในช่วงวันที่เลือกแล้ว');
       }
     }
