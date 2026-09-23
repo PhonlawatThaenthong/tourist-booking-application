@@ -1,16 +1,12 @@
-enum RoomType { standard, deluxe, suite, family }
+enum RoomType { single, twin }
 
 extension RoomTypeX on RoomType {
   String get label {
     switch (this) {
-      case RoomType.standard:
-        return 'Standard';
-      case RoomType.deluxe:
-        return 'Deluxe';
-      case RoomType.suite:
-        return 'Suite';
-      case RoomType.family:
-        return 'Family';
+      case RoomType.single:
+        return 'Single';
+      case RoomType.twin:
+        return 'Twin';
     }
   }
 }

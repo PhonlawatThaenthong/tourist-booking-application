@@ -116,7 +116,7 @@ Room roomFromJson(Map<String, dynamic> json) {
     name: json['name'] as String,
     type: RoomType.values.firstWhere(
       (t) => t.name == json['type'],
-      orElse: () => RoomType.standard,
+      orElse: () => RoomType.single,
     ),
     // numeric(10,2) is serialised as a JSON number by the API transformer, but
     // `num` covers the case where it arrives as an int (e.g. 2500 not 2500.0).

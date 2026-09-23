@@ -38,7 +38,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
     _capacity = TextEditingController(text: r?.capacity.toString() ?? '2');
     _description = TextEditingController(text: r?.description ?? '');
     _amenities = TextEditingController(text: r?.amenities.join(', ') ?? '');
-    _type = r?.type ?? RoomType.standard;
+    _type = r?.type ?? RoomType.single;
     _imageUrls = List.of(r?.imageUrls ?? const []);
   }
 
