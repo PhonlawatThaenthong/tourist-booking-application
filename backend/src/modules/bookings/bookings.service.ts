@@ -1,5 +1,5 @@
 import {
-  BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException,
+  BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -18,6 +18,7 @@ import {
 } from '../payments/payment.response';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BOOKING_EXPIRY_QUEUE, getBookingHoldMs } from '../../config/booking.config';
+import { withQueueTimeout } from '../../config/redis.config';
 
 /** Postgres SQLSTATEs that all mean "someone else got this range first". */
 const PG_EXCLUSION_VIOLATION = '23P01';
@@ -36,6 +37,16 @@ const PG_LOST_THE_RACE = new Set<string>([
 
 const RELATIONS = { room: true, customer: true } as const;
 
+/**
+ * Today's date at the resort as `YYYY-MM-DD`, the same shape as the stored
+ * checkIn/checkOut, so the two compare as plain strings. Pinned to Bangkok
+ * rather than the server clock: the container runs in UTC, which would still
+ * report "yesterday" for the first seven hours of a Thai day.
+ */
+function todayAtResort(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
+}
+
 @Injectable()
 export class BookingsService {
   constructor(
@@ -47,6 +58,7 @@ export class BookingsService {
   ) {}
 
   private readonly holdMs = getBookingHoldMs();
+  private readonly logger = new Logger(BookingsService.name);
 
   /**
    * `POST /api/bookings`.
@@ -107,18 +119,20 @@ export class BookingsService {
    */
   private async scheduleExpiry(bookingId: string): Promise<void> {
     try {
-      await this.expiryQueue.add(
+      await withQueueTimeout(this.expiryQueue.add(
         'expire',
         { bookingId },
         {
           delay: this.holdMs,
-          jobId: `expire:${bookingId}`,
+          // BullMQ rejects custom ids containing ':'.
+          jobId: `expire-${bookingId}`,
           removeOnComplete: true,
           removeOnFail: true,
         },
-      );
-    } catch {
-      // Redis unavailable — ignore; booking creation must still succeed.
+      ));
+    } catch (err) {
+      // Booking creation must still succeed; the sweeper releases the hold.
+      this.logger.warn(`could not schedule expiry for booking ${bookingId}: ${err}`);
     }
   }
 
@@ -210,7 +224,7 @@ export class BookingsService {
     const payment = await this.payments.getOrFail(paymentId);
     const booking = await this.repo.findOne({
       where: { id: payment.bookingId },
-      relations: { customer: true },
+      relations: { customer: true, room: true },
     });
     if (!booking) throw new NotFoundException('ไม่พบการจอง');
     if (booking.status === BookingStatus.CANCELLED) {
@@ -220,7 +234,12 @@ export class BookingsService {
     await this.payments.markVerified(paymentId, adminId);
 
     booking.paymentStatus = PaymentStatus.PAID;
-    booking.status = BookingStatus.APPROVED;
+    // Only a booking still awaiting approval moves forward. A guest can check
+    // in before paying (an admin may approve unpaid), and settling up later
+    // must not drag a checked-in or checked-out stay back to 'approved'.
+    if (booking.status === BookingStatus.PENDING) {
+      booking.status = BookingStatus.APPROVED;
+    }
     await this.repo.save(booking);
 
     await this.notifications.sendBookingConfirmation(booking, booking.customer.email);
@@ -249,12 +268,20 @@ export class BookingsService {
     if ((dto.checkIn === undefined) !== (dto.checkOut === undefined)) {
       throw new BadRequestException('การเลื่อนวันต้องระบุทั้ง checkIn และ checkOut');
     }
+    // These two have their own endpoints, which check the stay's dates and
+    // current state; a bare PATCH would skip both.
+    if (dto.status === BookingStatus.CHECKED_IN || dto.status === BookingStatus.CHECKED_OUT) {
+      throw new BadRequestException('ใช้ปุ่มเช็คอิน/เช็คเอาท์แทนการแก้สถานะโดยตรง');
+    }
 
     try {
       await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
         const bookings = manager.getRepository(Booking);
         const booking = await bookings.findOne({ where: { id }, relations: { room: true } });
         if (!booking) throw new NotFoundException('ไม่พบการจอง');
+        if (booking.status === BookingStatus.CHECKED_OUT) {
+          throw new ConflictException('การเข้าพักนี้เช็คเอาท์ไปแล้ว แก้ไขไม่ได้');
+        }
 
         if (dto.checkIn && dto.checkOut) {
           this.assertRange(dto.checkIn, dto.checkOut);
@@ -277,12 +304,66 @@ export class BookingsService {
     return this.getOrFail(id);
   }
 
+  /**
+   * `POST /api/staff/bookings/:id/check-in` — the guest has arrived.
+   *
+   * Only a paid (approved) booking, and only between its check-in day and the
+   * day before check-out. The published check-in hour is not enforced: letting
+   * someone in early is the front desk's call, not the server's.
+   */
+  async checkIn(id: string): Promise<BookingResponse> {
+    const booking = await this.repo.findOne({ where: { id } });
+    if (!booking) throw new NotFoundException('ไม่พบการจอง');
+    if (booking.status !== BookingStatus.APPROVED) {
+      throw new ConflictException('เช็คอินได้เฉพาะการจองที่อนุมัติและชำระเงินแล้ว');
+    }
+    const today = todayAtResort();
+    if (today < booking.checkIn) {
+      throw new BadRequestException('ยังไม่ถึงวันเช็คอินของการจองนี้');
+    }
+    if (today >= booking.checkOut) {
+      throw new BadRequestException('เลยวันเช็คเอาท์ของการจองนี้แล้ว');
+    }
+    booking.status = BookingStatus.CHECKED_IN;
+    await this.repo.save(booking);
+    return this.getOrFail(id);
+  }
+
+  /**
+   * `POST /api/staff/bookings/:id/check-out` — closes the booking. Allowed on
+   * any day, since guests do leave early; the room stays held for the rest of
+   * the booked range either way.
+   */
+  async checkOut(id: string): Promise<BookingResponse> {
+    const booking = await this.repo.findOne({ where: { id } });
+    if (!booking) throw new NotFoundException('ไม่พบการจอง');
+    if (booking.status !== BookingStatus.CHECKED_IN) {
+      throw new ConflictException('เช็คเอาท์ได้เฉพาะการจองที่เช็คอินแล้ว');
+    }
+    booking.status = BookingStatus.CHECKED_OUT;
+    await this.repo.save(booking);
+    return this.getOrFail(id);
+  }
+
   /** A customer cancelling their own booking. */
   async cancel(id: string, actorId: string, actorRole: UserRole): Promise<BookingResponse> {
     const booking = await this.repo.findOne({ where: { id } });
     if (!booking) throw new NotFoundException('ไม่พบการจอง');
     if (actorRole === UserRole.CUSTOMER && booking.customerId !== actorId) {
       throw new ForbiddenException('ไม่มีสิทธิ์เข้าถึงการจองนี้');
+    }
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new ConflictException('การจองนี้ถูกยกเลิกไปแล้ว');
+    }
+    if (booking.status === BookingStatus.CHECKED_OUT) {
+      throw new ConflictException('การเข้าพักนี้เช็คเอาท์ไปแล้ว ยกเลิกไม่ได้');
+    }
+    // A paid booking is refunded below, so a customer must not be able to
+    // cancel once the stay has started — otherwise they could check out and
+    // then claim their money back. Staff keep the power, to settle no-shows
+    // and disputes by hand.
+    if (actorRole === UserRole.CUSTOMER && booking.checkIn <= todayAtResort()) {
+      throw new BadRequestException('ยกเลิกได้ก่อนวันเช็คอินเท่านั้น');
     }
 
     const wasPaid = booking.paymentStatus === PaymentStatus.PAID;

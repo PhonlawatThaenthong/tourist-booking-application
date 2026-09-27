@@ -40,6 +40,25 @@ class BookingCancelRequested extends BookingEvent {
   const BookingCancelRequested(this.bookingId);
 }
 
+/// Front desk marking the guest as arrived.
+class BookingCheckInRequested extends BookingEvent {
+  final String bookingId;
+  const BookingCheckInRequested(this.bookingId);
+}
+
+/// Front desk marking the guest as departed, which closes the booking.
+class BookingCheckOutRequested extends BookingEvent {
+  final String bookingId;
+  const BookingCheckOutRequested(this.bookingId);
+}
+
+/// The customer cancelling their own booking. Separate from
+/// [BookingCancelRequested], which goes through the staff-only endpoint.
+class BookingCustomerCancelRequested extends BookingEvent {
+  final String bookingId;
+  const BookingCustomerCancelRequested(this.bookingId);
+}
+
 class BookingRescheduleRequested extends BookingEvent {
   final String bookingId;
   final DateTime checkIn;

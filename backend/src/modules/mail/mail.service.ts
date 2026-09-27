@@ -1,5 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
+import type { BookingConfirmationPayload } from '../notifications/notifications.service';
+import { CHECK_IN_TIME, CHECK_OUT_TIME } from '../../config/booking.config';
+
+// Gregorian year, to match the dates the app shows; the stored dates are
+// calendar days, so they are formatted in UTC to keep them from shifting.
+const THAI_DATE = new Intl.DateTimeFormat('th-TH-u-ca-gregory', {
+  day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+});
+const THB = new Intl.NumberFormat('th-TH', {
+  style: 'currency', currency: 'THB', maximumFractionDigits: 0,
+});
+
+function thaiDate(ymd: string): string {
+  return THAI_DATE.format(new Date(`${ymd}T00:00:00Z`));
+}
 
 /**
  * No transactional-email provider existed anywhere in the codebase before
@@ -39,8 +54,36 @@ export class MailService {
       'หากคุณไม่ได้ร้องขอการรีเซ็ตรหัสผ่าน กรุณาเพิกเฉยต่ออีเมลฉบับนี้',
     ].join('\n');
 
+    await this.send(to, subject, text);
+  }
+
+  /** Sent once staff verify the payment slip. */
+  async sendBookingConfirmation(to: string, b: BookingConfirmationPayload): Promise<void> {
+    const nights = Math.round(
+      (Date.parse(`${b.checkOut}T00:00:00Z`) - Date.parse(`${b.checkIn}T00:00:00Z`)) / 86_400_000,
+    );
+    const subject = `ยืนยันการจองห้อง ${b.roomName} — Poonsuk Resort`;
+    const text = [
+      `เรียน คุณ${b.customerName}`,
+      '',
+      'การจองของคุณได้รับการยืนยันและชำระเงินเรียบร้อยแล้ว',
+      '',
+      `ห้อง: ${b.roomName}`,
+      `เช็คอิน: ${thaiDate(b.checkIn)} ตั้งแต่เวลา ${CHECK_IN_TIME} น.`,
+      `เช็คเอาท์: ${thaiDate(b.checkOut)} ภายในเวลา ${CHECK_OUT_TIME} น.`,
+      `จำนวน: ${nights} คืน · ${b.guests} ท่าน`,
+      `ยอดชำระ: ${THB.format(b.totalPrice)}`,
+      `หมายเลขการจอง: ${b.bookingId}`,
+      '',
+      'แล้วพบกันที่ Poonsuk Resort',
+    ].join('\n');
+
+    await this.send(to, subject, text);
+  }
+
+  private async send(to: string, subject: string, text: string): Promise<void> {
     if (!this.transporter) {
-      this.logger.warn(`SMTP not configured — stub-sending password reset code to ${to}: ${code}`);
+      this.logger.warn(`SMTP not configured — stub-sending "${subject}" to ${to}:\n${text}`);
       return;
     }
 

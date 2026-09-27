@@ -22,14 +22,6 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
 
   List<Room> get allRooms => List.unmodifiable(state.rooms);
 
-  /// Lowest and highest nightly prices, used to seed the price slider.
-  double get minRoomPrice => state.rooms.isEmpty
-      ? 0
-      : state.rooms.map((r) => r.pricePerNight).reduce((a, b) => a < b ? a : b);
-  double get maxRoomPrice => state.rooms.isEmpty
-      ? 10000
-      : state.rooms.map((r) => r.pricePerNight).reduce((a, b) => a > b ? a : b);
-
   Room? byId(String id) {
     final match = state.rooms.where((r) => r.id == id);
     return match.isEmpty ? null : match.first;
@@ -68,11 +60,6 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       if (filter.types.isNotEmpty && !filter.types.contains(room.type)) {
         return false;
       }
-      if (room.pricePerNight < filter.minPrice ||
-          room.pricePerNight > filter.maxPrice) {
-        return false;
-      }
-      if (room.capacity < filter.guests) return false;
       if (filter.query.isNotEmpty &&
           !room.name.toLowerCase().contains(filter.query.toLowerCase())) {
         return false;

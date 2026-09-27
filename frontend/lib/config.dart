@@ -5,6 +5,12 @@ class AppConfig {
 
   static const String hotelName = 'Poonsuk Resort';
 
+  /// Published check-in and check-out hours, shown next to a stay's dates.
+  /// Display only: nothing enforces them, since letting a guest in early or
+  /// out late is the front desk's call.
+  static const String checkInTime = '14:00';
+  static const String checkOutTime = '12:00';
+
   /// Base URL of the NestJS API.
   ///
   /// Default assumes the API is reachable on the same host as the app

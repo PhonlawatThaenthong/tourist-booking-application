@@ -12,6 +12,9 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     on<BookingCreateRequested>(_onCreate);
     on<BookingApproveRequested>(_onApprove);
     on<BookingCancelRequested>(_onCancel);
+    on<BookingCustomerCancelRequested>(_onCustomerCancel);
+    on<BookingCheckInRequested>(_onCheckIn);
+    on<BookingCheckOutRequested>(_onCheckOut);
     on<BookingRescheduleRequested>(_onReschedule);
   }
 
@@ -53,6 +56,10 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
       state.bookings.where((b) => b.status == BookingStatus.approved).length;
   int get cancelledCount =>
       state.bookings.where((b) => b.status == BookingStatus.cancelled).length;
+  int get checkedInCount =>
+      state.bookings.where((b) => b.status == BookingStatus.checkedIn).length;
+  int get checkedOutCount =>
+      state.bookings.where((b) => b.status == BookingStatus.checkedOut).length;
 
   /// Occupancy rate = booked room-nights for the next [windowDays] days divided
   /// by total available room-nights, given [totalRooms].
@@ -121,6 +128,39 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
     Emitter<BookingState> emit,
   ) =>
       _transition(event.bookingId, BookingStatus.cancelled, emit);
+
+  Future<void> _onCustomerCancel(
+    BookingCustomerCancelRequested event,
+    Emitter<BookingState> emit,
+  ) async {
+    try {
+      _replace(await _repository.cancelBooking(event.bookingId), emit);
+    } on RepositoryException catch (e) {
+      emit(state.copyWith(errorMessage: e.message));
+    }
+  }
+
+  Future<void> _onCheckIn(
+    BookingCheckInRequested event,
+    Emitter<BookingState> emit,
+  ) async {
+    try {
+      _replace(await _repository.checkIn(event.bookingId), emit);
+    } on RepositoryException catch (e) {
+      emit(state.copyWith(errorMessage: e.message));
+    }
+  }
+
+  Future<void> _onCheckOut(
+    BookingCheckOutRequested event,
+    Emitter<BookingState> emit,
+  ) async {
+    try {
+      _replace(await _repository.checkOut(event.bookingId), emit);
+    } on RepositoryException catch (e) {
+      emit(state.copyWith(errorMessage: e.message));
+    }
+  }
 
   Future<void> _onReschedule(
     BookingRescheduleRequested event,

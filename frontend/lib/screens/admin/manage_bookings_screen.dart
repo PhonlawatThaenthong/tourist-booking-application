@@ -6,10 +6,12 @@ import '../../models/user.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/booking/booking_bloc.dart';
 import '../../blocs/booking/booking_event.dart';
+import '../../blocs/booking/booking_state.dart';
 import '../../utils/formatters.dart';
 
 /// Back-office view of bookings, filtered by status. Everyone on the staff
-/// side can view; approving, rescheduling and cancelling is admin-only.
+/// side can view and check guests in and out; approving, rescheduling and
+/// cancelling is admin-only.
 class ManageBookingsScreen extends StatefulWidget {
   const ManageBookingsScreen({super.key});
 
@@ -40,41 +42,50 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
     final isAdmin =
         context.watch<AuthBloc>().state.currentUser?.role == UserRole.admin;
 
-    return Column(
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              _chip('All', null),
-              _chip('Pending', BookingStatus.pending),
-              _chip('Approved', BookingStatus.approved),
-              _chip('Cancelled', BookingStatus.cancelled),
-            ],
+    return BlocListener<BookingBloc, BookingState>(
+      // Nothing else on this screen reports a failed action, so a refused
+      // check-in (say, the server's date moved on) would otherwise vanish.
+      listenWhen: (_, state) => state.errorMessage != null,
+      listener: (context, state) => ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(state.errorMessage!))),
+      child: Column(
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                _chip('All', null),
+                _chip('Pending', BookingStatus.pending),
+                _chip('Approved', BookingStatus.approved),
+                _chip('Checked in', BookingStatus.checkedIn),
+                _chip('Checked out', BookingStatus.checkedOut),
+                _chip('Cancelled', BookingStatus.cancelled),
+              ],
+            ),
           ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () async => _refresh(),
-            child: list.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 120),
-                      Center(child: Text('No bookings in this category')),
-                    ],
-                  )
-                : ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    itemCount: list.length,
-                    itemBuilder: (_, i) =>
-                        _AdminBookingCard(booking: list[i], isAdmin: isAdmin),
-                  ),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => _refresh(),
+              child: list.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 120),
+                        Center(child: Text('No bookings in this category')),
+                      ],
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      itemCount: list.length,
+                      itemBuilder: (_, i) =>
+                          _AdminBookingCard(booking: list[i], isAdmin: isAdmin),
+                    ),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -104,6 +115,10 @@ class _AdminBookingCard extends StatelessWidget {
         return Colors.orange;
       case BookingStatus.cancelled:
         return Colors.red;
+      case BookingStatus.checkedIn:
+        return Colors.blue;
+      case BookingStatus.checkedOut:
+        return Colors.blueGrey;
     }
   }
 
@@ -220,6 +235,51 @@ class _AdminBookingCard extends StatelessWidget {
     }
   }
 
+  Widget _deskButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          onPressed: onPressed,
+          icon: Icon(icon, size: 18),
+          label: Text(label),
+        ),
+      ),
+    );
+  }
+
+  /// Check-out closes the booking for good, so it asks first.
+  Future<void> _checkOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Check out?'),
+        content: Text(
+          'Check ${booking.customerName} out of ${booking.roomName}? '
+          'The booking will be closed and can no longer be changed.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Not yet'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Check out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      context.read<BookingBloc>().add(BookingCheckOutRequested(booking.id));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.read<BookingBloc>();
@@ -270,12 +330,31 @@ class _AdminBookingCard extends StatelessWidget {
                 ),
               ],
             ),
-            Text('${Format.date(booking.checkIn)} → '
-                '${Format.date(booking.checkOut)} (${booking.nights} nights)'),
+            Text('Check-in: ${Format.checkIn(booking.checkIn)}'),
+            Text('Check-out: ${Format.checkOut(booking.checkOut)} '
+                '(${booking.nights} nights)'),
             Text('${Format.money(booking.totalPrice)} · '
                 '${booking.paymentStatus.label}'),
             const SizedBox(height: 8),
-            if (isAdmin && booking.status != BookingStatus.cancelled)
+            // Front desk: any staff member, not just admins.
+            if (booking.staffCanCheckIn)
+              _deskButton(
+                icon: Icons.login,
+                label: 'Check in',
+                onPressed: () =>
+                    provider.add(BookingCheckInRequested(booking.id)),
+              ),
+            if (booking.status == BookingStatus.checkedIn)
+              _deskButton(
+                icon: Icons.logout,
+                label: 'Check out',
+                onPressed: () => _checkOut(context),
+              ),
+            // Once the guest is in, the booking is no longer the admin's to
+            // approve, move or cancel from here.
+            if (isAdmin &&
+                (booking.status == BookingStatus.pending ||
+                    booking.status == BookingStatus.approved))
               Wrap(
                 spacing: 8,
                 children: [

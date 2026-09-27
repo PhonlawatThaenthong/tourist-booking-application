@@ -23,6 +23,8 @@ class ReportsScreen extends StatelessWidget {
       BookingStatus.pending: bookings.pendingCount,
       BookingStatus.approved: bookings.approvedCount,
       BookingStatus.cancelled: bookings.cancelledCount,
+      BookingStatus.checkedIn: bookings.checkedInCount,
+      BookingStatus.checkedOut: bookings.checkedOutCount,
     };
     final maxCount = statusCounts.values.fold(0, (a, b) => a > b ? a : b);
 
@@ -119,6 +121,10 @@ class ReportsScreen extends StatelessWidget {
         return Colors.orange;
       case BookingStatus.cancelled:
         return Colors.red;
+      case BookingStatus.checkedIn:
+        return Colors.blue;
+      case BookingStatus.checkedOut:
+        return Colors.blueGrey;
     }
   }
 
