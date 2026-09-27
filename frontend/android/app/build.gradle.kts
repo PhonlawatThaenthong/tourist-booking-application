@@ -23,6 +23,17 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Patrol: routes `patrol test` instrumentation through its own runner,
+        // and clears app state between tests so runs don't leak into each other.
+        testInstrumentationRunner = "pl.leancode.patrol.PatrolJUnitRunner"
+        testInstrumentationRunnerArguments["clearPackageData"] = "true"
+    }
+
+    testOptions {
+        // Required by Patrol: isolates each test in its own instrumentation
+        // process and is what makes `clearPackageData` above take effect.
+        execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
 
     buildTypes {
@@ -32,6 +43,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+dependencies {
+    // Patrol: runs each instrumentation test in isolation (see
+    // testOptions.execution above) and lets `clearPackageData` work.
+    androidTestUtil("androidx.test:orchestrator:1.6.1")
 }
 
 kotlin {

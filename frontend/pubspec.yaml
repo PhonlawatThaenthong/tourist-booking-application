@@ -75,6 +75,9 @@ dev_dependencies:
   # symbol soup. Run `dart run sentry_dart_plugin` immediately after the
   # build, in the same job — see the `sentry:` block below.
   sentry_dart_plugin: ^3.2.1
+  patrol: ^4.10.0
+  integration_test:
+    sdk: flutter
 
 # Config for sentry_dart_plugin (see dev_dependencies above).
 # The auth token is deliberately absent: the plugin reads SENTRY_AUTH_TOKEN
@@ -103,6 +106,16 @@ sentry:
   # needs a GitHub repo integration configured in Sentry. Turn this on once
   # that exists — it is what makes suspect commits work.
   commits: 'false'
+
+# Config for the Patrol CLI (patrol test / patrol doctor / patrol devices).
+# package_name / bundle_id must match applicationId (android/app/build.gradle.kts)
+# and PRODUCT_BUNDLE_IDENTIFIER (ios/Runner.xcodeproj) respectively.
+patrol:
+  app_name: hotel_booking
+  android:
+    package_name: com.example.hotel_booking
+  ios:
+    bundle_id: com.example.hotelBooking
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
