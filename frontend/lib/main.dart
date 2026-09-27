@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -21,6 +23,14 @@ import 'theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Only the Android app is registered in Firebase so far. With no options
+  // passed, initializeApp reads android/app/google-services.json; on iOS and
+  // web there is no config yet and the call would throw at startup.
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    await Firebase.initializeApp();
+  }
+
   // One client for the whole app: it holds the access/refresh token pair and
   // de-duplicates token rotation across repositories.
   final app = HotelBookingApp(apiClient: ApiClient());
