@@ -14,6 +14,8 @@ import 'package:test_api/src/backend/invoker.dart';
 
 // START: GENERATED TEST IMPORTS
 import 'app_test.dart' as app_test;
+import 'auth_test.dart' as auth_test;
+import 'booking_test.dart' as booking_test;
 // END: GENERATED TEST IMPORTS
 
 Future<void> main() async {
@@ -106,6 +108,8 @@ Future<void> main() async {
 
 // START: GENERATED TEST GROUPS
   group('app_test', app_test.main);
+  group('auth_test', auth_test.main);
+  group('booking_test', booking_test.main);
 // END: GENERATED TEST GROUPS
 
   if (constants.testDiscoveryEnabled) {
