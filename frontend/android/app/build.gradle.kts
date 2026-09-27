@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.hotel_booking"
+    namespace = "com.poonsuk.resort"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.hotel_booking"
+        applicationId = "com.poonsuk.resort"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
