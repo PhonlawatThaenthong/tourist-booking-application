@@ -1,5 +1,7 @@
 plugins {
     id("com.android.application")
+    // Reads google-services.json (Firebase project poonsuk-resort-b8c5e).
+    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
