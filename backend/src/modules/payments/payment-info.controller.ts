@@ -1,6 +1,7 @@
 import {
   BadRequestException, Controller, Get, Query, StreamableFile,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { getPaymentConfig } from '../../config/payment.config';
 import { getBookingHoldMs } from '../../config/booking.config';
 
@@ -42,6 +43,7 @@ export class PaymentInfoController {
 
   /** Dynamic PromptPay QR with the amount embedded. */
   @Get('qr')
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   async qr(@Query('amount') amount?: string): Promise<StreamableFile> {
     let amt: number | undefined;
     if (amount !== undefined && amount !== '') {

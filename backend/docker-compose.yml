@@ -9,7 +9,7 @@ services:
       # directly, so these override whatever .env says for host access.
       DB_HOST: postgres
       DB_PORT: 5432
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
       # Slip uploads live on a named volume so they survive redeploys.
       UPLOAD_DIR: /app/uploads
       # Overrides the `development` in .env — without this, every error from
@@ -35,13 +35,14 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${DB_USER:-poonsuk}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-poonsuk_dev_password}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
       POSTGRES_DB: ${DB_NAME:-poonsuk}
     ports:
       # Host 5433 -> container 5432. 5432 on the host is taken by another
       # PostgreSQL, so DB_PORT in .env must be 5433 when running the API
-      # from Windows.
-      - "5433:5432"
+      # from Windows. Bound to 127.0.0.1 so the database is never reachable
+      # from the network, only from this machine and the compose network.
+      - "127.0.0.1:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -54,8 +55,13 @@ services:
   # Started now so compose does not need changing later.
   redis:
     image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}"]
+    environment:
+      # Picked up by redis-cli, so the healthcheck authenticates without
+      # putting the password on its command line.
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

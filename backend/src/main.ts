@@ -3,11 +3,20 @@
 import './instrument';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // Behind a reverse proxy every request arrives from the proxy's IP, which
+  // would make all clients share one rate-limit bucket. Opt-in only: trusting
+  // X-Forwarded-For without a proxy lets clients spoof their IP.
+  const trustProxy = process.env.TRUST_PROXY;
+  if (trustProxy) {
+    app.set('trust proxy', /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy);
+  }
 
   app.setGlobalPrefix('api', { exclude: ['health/live', 'health/ready'] });
   app.useGlobalPipes(

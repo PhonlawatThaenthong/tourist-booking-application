@@ -19,6 +19,10 @@ const DEV_FALLBACK_SECRET = 'change-me-access-secret';
 export function getJwtAccessSecret(): string {
   const fromEnv = process.env.JWT_ACCESS_SECRET;
   if (fromEnv) return fromEnv;
+  // A publicly known signing key lets anyone mint an admin token.
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_ACCESS_SECRET must be set when NODE_ENV=production');
+  }
   Logger.warn(
     'JWT_ACCESS_SECRET is not set — using an insecure default. Set it in .env before deploying.',
     'Config',
