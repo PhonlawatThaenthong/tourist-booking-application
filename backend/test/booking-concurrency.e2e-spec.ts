@@ -49,7 +49,7 @@ describe('POST /api/bookings — concurrent double booking (e2e)', () => {
     const [room] = await ds.query(
       `INSERT INTO rooms (name, type, price_per_night, capacity)
        VALUES ($1, $2, $3, $4) RETURNING id`,
-      [`Race Test Room ${stamp}`, RoomType.DELUXE, 2500, 4],
+      [`Race Test Room ${stamp}`, RoomType.SINGLE, 2500, 4],
     );
     roomId = room.id;
 

@@ -4,4 +4,9 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- The dev API is plain HTTP, which Android blocks by default from API 28
+         on. Allowing it here rather than in the main manifest keeps the
+         restriction in force for release builds, which talk HTTPS. -->
+    <application android:usesCleartextTraffic="true"/>
 </manifest>

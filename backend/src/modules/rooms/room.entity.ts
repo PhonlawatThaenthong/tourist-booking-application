@@ -6,10 +6,8 @@ import { Booking } from '../bookings/booking.entity';
 
 /** Mirrors RoomType in frontend/lib/models/room.dart */
 export enum RoomType {
-  STANDARD = 'standard',
-  DELUXE = 'deluxe',
-  SUITE = 'suite',
-  FAMILY = 'family',
+  SINGLE = 'single',
+  TWIN = 'twin',
 }
 
 /** Mirrors RoomStatus in frontend/lib/models/room.dart */
