@@ -1,4 +1,7 @@
-import { Controller, Get, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import {
+  Controller, Get, Param, ParseUUIDPipe, Query, StreamableFile,
+} from '@nestjs/common';
+import { createReadStream } from 'fs';
 import { RoomsService } from './rooms.service';
 import { QueryRoomsDto } from './dto/query-rooms.dto';
 
@@ -25,5 +28,15 @@ export class RoomsController {
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.rooms.getOrFail(id);
+  }
+
+  /** `GET /api/rooms/:id/images/:file` — a photo staff uploaded; public, like the catalogue. */
+  @Get(':id/images/:file')
+  image(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('file') file: string,
+  ): StreamableFile {
+    const { path, contentType } = this.rooms.getImageFile(id, file);
+    return new StreamableFile(createReadStream(path), { type: contentType });
   }
 }

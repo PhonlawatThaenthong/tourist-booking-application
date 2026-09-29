@@ -24,7 +24,12 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
   late final TextEditingController _description;
   late final TextEditingController _amenities;
   late RoomType _type;
+
+  /// Photos the room already has (bundled assets or uploaded ones).
   late List<String> _imageUrls;
+
+  /// Photos picked here, uploaded when the form is saved.
+  final List<PendingPhoto> _newPhotos = [];
 
   bool get _isEdit => widget.existing != null;
 
@@ -74,13 +79,12 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
     );
     if (source == null) return;
     final picked = await ImagePicker().pickImage(source: source, imageQuality: 85);
-    if (picked != null) {
-      setState(() => _imageUrls.add(picked.path));
-    }
-  }
-
-  void _removePhoto(int index) {
-    setState(() => _imageUrls.removeAt(index));
+    if (picked == null) return;
+    // Read now: the picker's path is only valid on this device, and on web
+    // it is a blob URL that expires with the page.
+    final bytes = await picked.readAsBytes();
+    if (!mounted) return;
+    setState(() => _newPhotos.add(PendingPhoto(bytes, picked.name)));
   }
 
   void _save() {
@@ -103,7 +107,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
         ..description = _description.text.trim()
         ..imageUrls = imageUrls
         ..amenities = amenities;
-      provider.add(RoomUpdateRequested(r));
+      provider.add(RoomUpdateRequested(r, newPhotos: _newPhotos));
     } else {
       provider.add(RoomAddRequested(
         name: _name.text.trim(),
@@ -113,9 +117,36 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
         description: _description.text.trim(),
         imageUrls: imageUrls,
         amenities: amenities,
+        newPhotos: _newPhotos,
       ));
     }
     Navigator.of(context).pop();
+  }
+
+  Widget _thumbnail(Widget image, {required VoidCallback onRemove}) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(width: 96, height: 96, child: image),
+          ),
+          Positioned(
+            top: 2,
+            right: 2,
+            child: GestureDetector(
+              onTap: onRemove,
+              child: const CircleAvatar(
+                radius: 12,
+                backgroundColor: Colors.black54,
+                child: Icon(Icons.close, size: 14, color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -186,34 +217,14 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
                 scrollDirection: Axis.horizontal,
                 children: [
                   for (var i = 0; i < _imageUrls.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: SizedBox(
-                              width: 96,
-                              height: 96,
-                              child: AppImage(
-                                  url: _imageUrls[i], fit: BoxFit.cover),
-                            ),
-                          ),
-                          Positioned(
-                            top: 2,
-                            right: 2,
-                            child: GestureDetector(
-                              onTap: () => _removePhoto(i),
-                              child: const CircleAvatar(
-                                radius: 12,
-                                backgroundColor: Colors.black54,
-                                child: Icon(Icons.close,
-                                    size: 14, color: Colors.white),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    _thumbnail(
+                      AppImage(url: _imageUrls[i], fit: BoxFit.cover),
+                      onRemove: () => setState(() => _imageUrls.removeAt(i)),
+                    ),
+                  for (var i = 0; i < _newPhotos.length; i++)
+                    _thumbnail(
+                      Image.memory(_newPhotos[i].bytes, fit: BoxFit.cover),
+                      onRemove: () => setState(() => _newPhotos.removeAt(i)),
                     ),
                   InkWell(
                     onTap: _addPhoto,

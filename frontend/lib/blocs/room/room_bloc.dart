@@ -102,7 +102,10 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         imageUrls: event.imageUrls,
         amenities: event.amenities,
       );
+      // Shown straight away; photos follow as each upload lands, so a failed
+      // upload still leaves the room itself saved.
       emit(state.copyWith(rooms: [...state.rooms, room]));
+      await _uploadPhotos(room.id, event.newPhotos, emit);
     } on RepositoryException catch (e) {
       emit(state.copyWith(errorMessage: e.message));
     }
@@ -115,8 +118,27 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     try {
       final updated = await _repository.updateRoom(event.room);
       _replace(updated, emit);
+      await _uploadPhotos(updated.id, event.newPhotos, emit);
     } on RepositoryException catch (e) {
       emit(state.copyWith(errorMessage: e.message));
+    }
+  }
+
+  /// One at a time, in the order they were picked, so they keep that order.
+  Future<void> _uploadPhotos(
+    String roomId,
+    List<PendingPhoto> photos,
+    Emitter<RoomState> emit,
+  ) async {
+    for (final photo in photos) {
+      _replace(
+        await _repository.addRoomPhoto(
+          roomId,
+          bytes: photo.bytes,
+          filename: photo.filename,
+        ),
+        emit,
+      );
     }
   }
 

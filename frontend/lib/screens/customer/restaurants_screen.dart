@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../models/restaurant.dart';
 import '../../blocs/restaurant/restaurant_bloc.dart';
 import '../../services/maps_service.dart';
+import '../../utils/formatters.dart';
+import '../../widgets/app_image.dart';
 
 /// Recommended nearby restaurants with one-tap directions via Google Maps.
 class RestaurantsScreen extends StatelessWidget {
@@ -37,10 +39,11 @@ class _RestaurantCard extends StatelessWidget {
         children: [
           AspectRatio(
             aspectRatio: 16 / 9,
-            child: Image.network(
-              restaurant.imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
+            // AppImage, not Image.network: the photos are bundled assets
+            // (image/...), like the room photos.
+            child: AppImage(
+              url: restaurant.imageUrl,
+              errorBuilder: (_) => Container(
                 color: Colors.grey.shade200,
                 child: const Icon(Icons.restaurant, size: 48),
               ),
@@ -73,7 +76,7 @@ class _RestaurantCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${restaurant.cuisine} · ${restaurant.priceRange} · '
-                  '${restaurant.distanceKm} km away',
+                  '${Format.distance(restaurant.distanceKm)} away',
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 8),

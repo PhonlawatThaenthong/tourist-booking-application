@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:uuid/uuid.dart';
 
 import '../../data/mock_data.dart';
@@ -65,6 +67,16 @@ class MockRoomRepository implements RoomRepository {
     room.status = status;
     return room;
   }
+
+  /// The mock has nowhere to host a file, so the photo is dropped and the
+  /// room comes back unchanged.
+  @override
+  Future<Room> addRoomPhoto(
+    String roomId, {
+    required Uint8List bytes,
+    required String filename,
+  }) async =>
+      _rooms[_indexOf(roomId)];
 
   @override
   Future<void> deleteRoom(String id) async {

@@ -17,7 +17,6 @@ import 'blocs/room/room_event.dart';
 import 'config.dart';
 import 'repositories/repositories.dart';
 import 'repositories/api/api_repositories.dart';
-import 'repositories/mock/mock_repositories.dart';
 import 'screens/splash_screen.dart';
 import 'theme.dart';
 
@@ -104,7 +103,7 @@ class HotelBookingApp extends StatelessWidget {
           create: (_) => ApiPaymentRepository(apiClient),
         ),
         RepositoryProvider<RestaurantRepository>(
-          create: (_) => MockRestaurantRepository(),
+          create: (_) => ApiRestaurantRepository(apiClient),
         ),
       ],
       child: MultiBlocProvider(

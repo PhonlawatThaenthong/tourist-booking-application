@@ -69,6 +69,18 @@ class ApiClient {
   /// loaded outside this client (e.g. a public image in an `Image.network`).
   String get baseUrl => _baseUrl;
 
+  /// Photos the backend stores come back as API paths (`/api/...`); those get
+  /// the base URL prepended. Bundled asset paths (`image/...`) and full URLs
+  /// pass through unchanged, so AppImage can tell them apart.
+  String resolveMediaUrl(String url) =>
+      url.startsWith('/api/') ? '$_baseUrl$url' : url;
+
+  /// The reverse of [resolveMediaUrl], for sending a URL back to be stored.
+  /// The base URL differs per device (10.0.2.2 on the emulator, a LAN IP on a
+  /// phone), so only the API path may be saved.
+  String toStoredMediaUrl(String url) =>
+      url.startsWith('$_baseUrl/api/') ? url.substring(_baseUrl.length) : url;
+
   /// Uploads a single file as `multipart/form-data`. Mirrors [_send]'s auth and
   /// one-shot 401 refresh, but a multipart request cannot be replayed once its
   /// stream is read, so each attempt rebuilds the request.
