@@ -1,6 +1,7 @@
 import {
-  Controller, Get, Param, ParseUUIDPipe, Query, StreamableFile,
+  Controller, Get, Param, ParseUUIDPipe, Query, Res, StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { createReadStream } from 'fs';
 import { RoomsService } from './rooms.service';
 import { QueryRoomsDto } from './dto/query-rooms.dto';
@@ -10,9 +11,12 @@ import { QueryRoomsDto } from './dto/query-rooms.dto';
 export class RoomsController {
   constructor(private readonly rooms: RoomsService) {}
 
+  /** `X-Cache: HIT | MISS | BYPASS` shows whether Redis answered (see RedisCacheService). */
   @Get()
-  find(@Query() query: QueryRoomsDto) {
-    return this.rooms.search(query);
+  async find(@Query() query: QueryRoomsDto, @Res({ passthrough: true }) res: Response) {
+    const { value, status } = await this.rooms.search(query);
+    res.setHeader('X-Cache', status);
+    return value;
   }
 
   /**
@@ -21,8 +25,14 @@ export class RoomsController {
    * Declared before ':id' so 'availability' is not parsed as a room id.
    */
   @Get('availability')
-  availability(@Query('from') from?: string, @Query('to') to?: string) {
-    return this.rooms.bookedRanges(from, to);
+  async availability(
+    @Res({ passthrough: true }) res: Response,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    const { value, status } = await this.rooms.bookedRanges(from, to);
+    res.setHeader('X-Cache', status);
+    return value;
   }
 
   @Get(':id')

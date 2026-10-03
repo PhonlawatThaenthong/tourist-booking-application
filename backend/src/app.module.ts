@@ -13,6 +13,7 @@ import { BookingsModule } from './modules/bookings/bookings.module';
 import { RestaurantsModule } from './modules/restaurants/restaurants.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { RedisCacheModule } from './modules/cache/redis-cache.module';
 import { buildDataSourceOptions } from './config/data-source';
 import { getRedisConnection } from './config/redis.config';
 
@@ -30,6 +31,7 @@ import { getRedisConnection } from './config/redis.config';
     }),
     TypeOrmModule.forRoot(buildDataSourceOptions()),
     BullModule.forRoot({ connection: getRedisConnection() }),
+    RedisCacheModule,
     AuthModule,
     UsersModule,
     HealthModule,

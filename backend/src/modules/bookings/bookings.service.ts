@@ -19,6 +19,9 @@ import {
 import { NotificationsService } from '../notifications/notifications.service';
 import { BOOKING_EXPIRY_QUEUE, getBookingHoldMs } from '../../config/booking.config';
 import { withQueueTimeout } from '../../config/redis.config';
+import { RedisCacheService } from '../cache/redis-cache.service';
+import { RedisLockService, roomLockKey } from '../cache/redis-lock.service';
+import { ROOMS_CACHE_NAMESPACE } from '../rooms/rooms-cache';
 
 /** Postgres SQLSTATEs that all mean "someone else got this range first". */
 const PG_EXCLUSION_VIOLATION = '23P01';
@@ -55,6 +58,8 @@ export class BookingsService {
     private readonly payments: PaymentsService,
     private readonly notifications: NotificationsService,
     @InjectQueue(BOOKING_EXPIRY_QUEUE) private readonly expiryQueue: Queue,
+    private readonly cache: RedisCacheService,
+    private readonly locks: RedisLockService,
   ) {}
 
   private readonly holdMs = getBookingHoldMs();
@@ -72,44 +77,58 @@ export class BookingsService {
    * they are the same event: the range was taken. No retry loop here — a retry
    * would silently book a range the customer saw as free a moment ago, so the
    * app re-queries and lets the customer choose.
+   *
+   * The transaction runs under `lock:room:<roomId>` in Redis, so requests for
+   * the same room — from any API instance — queue up instead of colliding in
+   * Postgres. Other rooms use other keys and never wait. The lock is released
+   * when the transaction ends, not when the hold expires; the hold itself is
+   * the `pending` row.
    */
   async create(customerId: string, dto: CreateBookingDto): Promise<BookingResponse> {
     this.assertRange(dto.checkIn, dto.checkOut);
 
     try {
-      const id = await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
-        const room = await manager.getRepository(Room).findOne({ where: { id: dto.roomId } });
-        if (!room) throw new NotFoundException('ไม่พบห้องพัก');
-        if (room.status !== RoomStatus.AVAILABLE) {
-          throw new ConflictException('ห้องนี้ปิดปรับปรุงอยู่');
-        }
-        if (dto.guests > room.capacity) {
-          throw new BadRequestException(`ห้องนี้รองรับได้สูงสุด ${room.capacity} คน`);
-        }
+      const id = await this.locks.withLock(roomLockKey(dto.roomId), () =>
+        this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+          const room = await manager.getRepository(Room).findOne({ where: { id: dto.roomId } });
+          if (!room) throw new NotFoundException('ไม่พบห้องพัก');
+          if (room.status !== RoomStatus.AVAILABLE) {
+            throw new ConflictException('ห้องนี้ปิดปรับปรุงอยู่');
+          }
+          if (dto.guests > room.capacity) {
+            throw new BadRequestException(`ห้องนี้รองรับได้สูงสุด ${room.capacity} คน`);
+          }
 
-        const nights = nightsBetween(dto.checkIn, dto.checkOut);
-        const booking = manager.getRepository(Booking).create({
-          roomId: room.id,
-          customerId,
-          checkIn: dto.checkIn,
-          checkOut: dto.checkOut,
-          guests: dto.guests,
-          // Priced from the row just read inside this transaction, never from
-          // anything the client sent.
-          totalPrice: Number((room.pricePerNight * nights).toFixed(2)),
-          status: BookingStatus.PENDING,
-          paymentStatus: PaymentStatus.UNPAID,
-        });
+          const nights = nightsBetween(dto.checkIn, dto.checkOut);
+          const booking = manager.getRepository(Booking).create({
+            roomId: room.id,
+            customerId,
+            checkIn: dto.checkIn,
+            checkOut: dto.checkOut,
+            guests: dto.guests,
+            // Priced from the row just read inside this transaction, never from
+            // anything the client sent.
+            totalPrice: Number((room.pricePerNight * nights).toFixed(2)),
+            status: BookingStatus.PENDING,
+            paymentStatus: PaymentStatus.UNPAID,
+          });
 
-        const saved = await manager.getRepository(Booking).save(booking);
-        return saved.id;
-      });
+          const saved = await manager.getRepository(Booking).save(booking);
+          return saved.id;
+        }));
 
+      // After commit, so no reader can re-cache the pre-booking answer.
+      await this.availabilityChanged();
       await this.scheduleExpiry(id);
       return this.getOrFail(id);
     } catch (err) {
       throw this.translateConflict(err);
     }
+  }
+
+  /** Room search/availability answers are now stale. Never throws. */
+  private availabilityChanged(): Promise<void> {
+    return this.cache.invalidate(ROOMS_CACHE_NAMESPACE);
   }
 
   /**
@@ -152,6 +171,7 @@ export class BookingsService {
     if (payment && payment.slipPath) return; // slip uploaded — leave for staff
     booking.status = BookingStatus.CANCELLED;
     await this.repo.save(booking);
+    await this.availabilityChanged();
   }
 
   /** `GET /api/bookings/me` */
@@ -274,33 +294,40 @@ export class BookingsService {
       throw new BadRequestException('ใช้ปุ่มเช็คอิน/เช็คเอาท์แทนการแก้สถานะโดยตรง');
     }
 
+    // Rescheduling (or reviving a cancelled booking) claims nights on this
+    // booking's room, so it queues on the same per-room lock as create.
+    const current = await this.repo.findOne({ where: { id }, select: { id: true, roomId: true } });
+    if (!current) throw new NotFoundException('ไม่พบการจอง');
+
     try {
-      await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
-        const bookings = manager.getRepository(Booking);
-        const booking = await bookings.findOne({ where: { id }, relations: { room: true } });
-        if (!booking) throw new NotFoundException('ไม่พบการจอง');
-        if (booking.status === BookingStatus.CHECKED_OUT) {
-          throw new ConflictException('การเข้าพักนี้เช็คเอาท์ไปแล้ว แก้ไขไม่ได้');
-        }
+      await this.locks.withLock(roomLockKey(current.roomId), () =>
+        this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+          const bookings = manager.getRepository(Booking);
+          const booking = await bookings.findOne({ where: { id }, relations: { room: true } });
+          if (!booking) throw new NotFoundException('ไม่พบการจอง');
+          if (booking.status === BookingStatus.CHECKED_OUT) {
+            throw new ConflictException('การเข้าพักนี้เช็คเอาท์ไปแล้ว แก้ไขไม่ได้');
+          }
 
-        if (dto.checkIn && dto.checkOut) {
-          this.assertRange(dto.checkIn, dto.checkOut);
-          booking.checkIn = dto.checkIn;
-          booking.checkOut = dto.checkOut;
-          // Re-priced from the stored nightly rate, as the repository contract
-          // in booking_repository.dart states.
-          booking.totalPrice = Number(
-            (booking.room.pricePerNight * nightsBetween(dto.checkIn, dto.checkOut)).toFixed(2),
-          );
-        }
-        if (dto.status) booking.status = dto.status;
+          if (dto.checkIn && dto.checkOut) {
+            this.assertRange(dto.checkIn, dto.checkOut);
+            booking.checkIn = dto.checkIn;
+            booking.checkOut = dto.checkOut;
+            // Re-priced from the stored nightly rate, as the repository contract
+            // in booking_repository.dart states.
+            booking.totalPrice = Number(
+              (booking.room.pricePerNight * nightsBetween(dto.checkIn, dto.checkOut)).toFixed(2),
+            );
+          }
+          if (dto.status) booking.status = dto.status;
 
-        await bookings.save(booking);
-      });
+          await bookings.save(booking);
+        }));
     } catch (err) {
       throw this.translateConflict(err);
     }
 
+    await this.availabilityChanged();
     return this.getOrFail(id);
   }
 
@@ -372,6 +399,7 @@ export class BookingsService {
       booking.paymentStatus = PaymentStatus.REFUNDED;
     }
     await this.repo.save(booking);
+    await this.availabilityChanged();
     if (wasPaid) {
       await this.payments.recordRefund(booking.id);
     }

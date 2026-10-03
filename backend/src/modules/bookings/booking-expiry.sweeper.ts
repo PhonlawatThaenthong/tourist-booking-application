@@ -1,6 +1,8 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { getBookingHoldMs, getBookingSweepMs } from '../../config/booking.config';
+import { RedisCacheService } from '../cache/redis-cache.service';
+import { ROOMS_CACHE_NAMESPACE } from '../rooms/rooms-cache';
 
 /**
  * Safety-net timer that releases abandoned holds. Every `BOOKING_SWEEP_SECONDS`
@@ -15,7 +17,10 @@ export class BookingExpirySweeper implements OnModuleInit, OnModuleDestroy {
   private readonly sweepMs = getBookingSweepMs();
   private timer?: ReturnType<typeof setInterval>;
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly cache: RedisCacheService,
+  ) {}
 
   onModuleInit(): void {
     const holdSeconds = Math.round(getBookingHoldMs() / 1000);
@@ -53,6 +58,7 @@ export class BookingExpirySweeper implements OnModuleInit, OnModuleDestroy {
     const count = Array.isArray(result) ? result[1] : undefined;
     if (typeof count === 'number' && count > 0) {
       this.logger.log(`released ${count} expired booking hold(s)`);
+      await this.cache.invalidate(ROOMS_CACHE_NAMESPACE);
     }
   }
 }

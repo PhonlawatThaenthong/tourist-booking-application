@@ -20,6 +20,41 @@ export function getRedisConnection() {
  * without this an HTTP request that enqueues a job hangs instead of failing.
  * The buffered add may still land later if Redis comes back.
  */
+/**
+ * Room-search cache (RedisCacheModule). The design doc asks for a 30-60 s TTL:
+ * long enough to absorb bursts of identical searches, short enough that a
+ * missed invalidation heals itself quickly. `CACHE_ENABLED=false` turns the
+ * cache off entirely (every read goes to Postgres, X-Cache: BYPASS).
+ */
+export function getCacheOptions() {
+  const ttl = Number(process.env.CACHE_TTL_SECONDS ?? 60);
+  const timeout = Number(process.env.CACHE_OP_TIMEOUT_MS ?? 250);
+  return {
+    enabled: (process.env.CACHE_ENABLED ?? 'true').toLowerCase() !== 'false',
+    ttlSeconds: Number.isFinite(ttl) && ttl > 0 ? Math.floor(ttl) : 60,
+    opTimeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : 250,
+  };
+}
+
+/**
+ * Per-room booking lock (RedisLockService). The lock is held for one short
+ * transaction, so a 5 s TTL is generous; it only matters if the holder dies.
+ * `LOCK_WAIT_MS` is how long a second request for the same room waits before
+ * a 503. `LOCK_ENABLED=false` skips the lock (Postgres still prevents overlaps).
+ */
+export function getLockOptions() {
+  const num = (name: string, fallback: number) => {
+    const v = Number(process.env[name] ?? fallback);
+    return Number.isFinite(v) && v > 0 ? v : fallback;
+  };
+  return {
+    enabled: (process.env.LOCK_ENABLED ?? 'true').toLowerCase() !== 'false',
+    ttlMs: num('LOCK_TTL_MS', 5000),
+    waitMs: num('LOCK_WAIT_MS', 2000),
+    opTimeoutMs: num('CACHE_OP_TIMEOUT_MS', 250),
+  };
+}
+
 export function withQueueTimeout<T>(pending: Promise<T>, ms = 2000): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {

@@ -123,6 +123,48 @@ describe('POST /api/bookings — concurrent double booking (e2e)', () => {
     expect(res.status).toBe(201);
   });
 
+  it('does not make a different room wait (per-room lock)', async () => {
+    // Two rooms, two customers, the same nights, at the same moment. Each
+    // request locks only its own room, so both must succeed.
+    const [other] = await ds.query(
+      `INSERT INTO rooms (name, type, price_per_night, capacity)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [`Race Test Room B ${stamp}`, RoomType.SINGLE, 2500, 4],
+    );
+    try {
+      const [a, b] = await Promise.all([
+        request(app.getHttpServer())
+          .post('/api/bookings')
+          .set('Authorization', `Bearer ${aliceToken}`)
+          .send({ roomId, checkIn: '2030-02-01', checkOut: '2030-02-03', guests: 1 }),
+        request(app.getHttpServer())
+          .post('/api/bookings')
+          .set('Authorization', `Bearer ${bobToken}`)
+          .send({ roomId: other.id, checkIn: '2030-02-01', checkOut: '2030-02-03', guests: 1 }),
+      ]);
+      expect([a.status, b.status]).toEqual([201, 201]);
+    } finally {
+      await ds.query(`DELETE FROM bookings WHERE room_id = $1`, [other.id]);
+      await ds.query(`DELETE FROM rooms WHERE id = $1`, [other.id]);
+    }
+  });
+
+  it('lets the same room take two non-overlapping ranges at the same moment', async () => {
+    // Same lock key, so the second request waits for the first instead of
+    // being rejected — both get 201.
+    const [a, b] = await Promise.all([
+      request(app.getHttpServer())
+        .post('/api/bookings')
+        .set('Authorization', `Bearer ${aliceToken}`)
+        .send({ roomId, checkIn: '2030-03-01', checkOut: '2030-03-03', guests: 1 }),
+      request(app.getHttpServer())
+        .post('/api/bookings')
+        .set('Authorization', `Bearer ${bobToken}`)
+        .send({ roomId, checkIn: '2030-03-05', checkOut: '2030-03-07', guests: 1 }),
+    ]);
+    expect([a.status, b.status]).toEqual([201, 201]);
+  });
+
   it('hides the room from availability search for the booked range', async () => {
     const res = await request(app.getHttpServer())
       .get(`/api/rooms?checkIn=${CHECK_IN}&checkOut=${CHECK_OUT}`)
