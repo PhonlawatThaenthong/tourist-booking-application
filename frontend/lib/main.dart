@@ -108,6 +108,9 @@ class HotelBookingApp extends StatelessWidget {
         RepositoryProvider<ReportRepository>(
           create: (_) => ApiReportRepository(apiClient),
         ),
+        RepositoryProvider<ChatbotRepository>(
+          create: (_) => ApiChatbotRepository(apiClient),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
