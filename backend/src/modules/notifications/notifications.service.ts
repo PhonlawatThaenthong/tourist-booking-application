@@ -3,7 +3,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Queue } from 'bullmq';
 import { Repository } from 'typeorm';
-import { Booking } from '../bookings/booking.entity';
+import { Booking, PaymentStatus } from '../bookings/booking.entity';
 import { NotificationChannel, NotificationLog, NotificationStatus } from './notification-log.entity';
 import { withQueueTimeout } from '../../config/redis.config';
 
@@ -26,6 +26,12 @@ export interface BookingConfirmationPayload {
   checkOut: string;
   guests: number;
   totalPrice: number;
+  /**
+   * false = an admin approved the booking before the slip was verified, so the
+   * email asks the guest to pay. Missing on rows queued before this field
+   * existed — those were all sent on payment approval, so treat as paid.
+   */
+  paid?: boolean;
 }
 
 @Injectable()
@@ -51,6 +57,7 @@ export class NotificationsService {
       checkOut: booking.checkOut,
       guests: booking.guests,
       totalPrice: Number(booking.totalPrice),
+      paid: booking.paymentStatus === PaymentStatus.PAID,
     };
     const log = await this.repo.save(this.repo.create({
       bookingId: booking.id,

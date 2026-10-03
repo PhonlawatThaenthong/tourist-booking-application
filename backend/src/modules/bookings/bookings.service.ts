@@ -296,7 +296,9 @@ export class BookingsService {
 
     // Rescheduling (or reviving a cancelled booking) claims nights on this
     // booking's room, so it queues on the same per-room lock as create.
-    const current = await this.repo.findOne({ where: { id }, select: { id: true, roomId: true } });
+    const current = await this.repo.findOne({
+      where: { id }, select: { id: true, roomId: true, status: true },
+    });
     if (!current) throw new NotFoundException('ไม่พบการจอง');
 
     try {
@@ -328,7 +330,27 @@ export class BookingsService {
     }
 
     await this.availabilityChanged();
+    if (dto.status === BookingStatus.APPROVED && current.status !== BookingStatus.APPROVED) {
+      await this.notifyApproved(id);
+    }
     return this.getOrFail(id);
+  }
+
+  /**
+   * An admin just approved the booking from manage_bookings: email the guest.
+   * Only on the transition into `approved`, so re-saving an approved booking
+   * (e.g. a reschedule that also sends status) does not email again. The
+   * PATCH has already committed, so a failure here is logged, never thrown.
+   */
+  private async notifyApproved(id: string): Promise<void> {
+    try {
+      const booking = await this.repo.findOne({ where: { id }, relations: RELATIONS });
+      if (booking?.customer?.email) {
+        await this.notifications.sendBookingConfirmation(booking, booking.customer.email);
+      }
+    } catch (err) {
+      this.logger.warn(`could not queue approval email for booking ${id}: ${err}`);
+    }
   }
 
   /**

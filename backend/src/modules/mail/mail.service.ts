@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import type { BookingConfirmationPayload } from '../notifications/notifications.service';
 import { CHECK_IN_TIME, CHECK_OUT_TIME } from '../../config/booking.config';
@@ -23,7 +23,7 @@ function thaiDate(ymd: string): string {
  * instead of sending, the same fallback the notifications stub used.
  */
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
   private readonly transporter: nodemailer.Transporter | null;
 
@@ -44,6 +44,31 @@ export class MailService {
     });
   }
 
+  /**
+   * Checks the SMTP login once at startup so a wrong host/port/app password
+   * shows up in the boot log, not as a silent failure on the first reset
+   * email. Never blocks or fails startup.
+   */
+  onModuleInit(): void {
+    if (!this.transporter) {
+      this.logger.warn('SMTP_HOST not set — emails are logged to the console, not sent');
+      return;
+    }
+    this.transporter.verify().then(
+      () => this.logger.log(`SMTP ready (${process.env.SMTP_HOST}:${process.env.SMTP_PORT ?? 587})`),
+      (err) => this.logger.error(`SMTP login failed — emails will not be delivered: ${err}`),
+    );
+  }
+
+  /** For `npm run mail:test`: sends one plain message and lets errors surface. */
+  async sendTest(to: string): Promise<void> {
+    await this.send(
+      to,
+      'ทดสอบการส่งอีเมล — Poonsuk Resort',
+      'ถ้าคุณได้รับอีเมลนี้ แปลว่าการตั้งค่า SMTP ของระบบใช้งานได้แล้ว',
+    );
+  }
+
   async sendPasswordResetCode(to: string, code: string): Promise<void> {
     const ttlMinutes = process.env.RESET_TOKEN_TTL_MINUTES ?? '15';
     const subject = 'รหัสยืนยันการรีเซ็ตรหัสผ่าน';
@@ -57,24 +82,37 @@ export class MailService {
     await this.send(to, subject, text);
   }
 
-  /** Sent once staff verify the payment slip. */
+  /**
+   * Sent when staff verify the payment slip (paid), or when an admin approves
+   * a booking before payment (unpaid — the email then asks the guest to pay).
+   */
   async sendBookingConfirmation(to: string, b: BookingConfirmationPayload): Promise<void> {
     const nights = Math.round(
       (Date.parse(`${b.checkOut}T00:00:00Z`) - Date.parse(`${b.checkIn}T00:00:00Z`)) / 86_400_000,
     );
-    const subject = `ยืนยันการจองห้อง ${b.roomName} — Poonsuk Resort`;
+    const paid = b.paid !== false;
+    const subject = paid
+      ? `ยืนยันการจองห้อง ${b.roomName} — Poonsuk Resort`
+      : `การจองห้อง ${b.roomName} ได้รับการอนุมัติ — Poonsuk Resort`;
     const text = [
       `เรียน คุณ${b.customerName}`,
       '',
-      'การจองของคุณได้รับการยืนยันและชำระเงินเรียบร้อยแล้ว',
+      paid
+        ? 'การจองของคุณได้รับการยืนยันและชำระเงินเรียบร้อยแล้ว'
+        : 'การจองของคุณได้รับการอนุมัติจากเจ้าหน้าที่แล้ว',
       '',
       `ห้อง: ${b.roomName}`,
       `เช็คอิน: ${thaiDate(b.checkIn)} ตั้งแต่เวลา ${CHECK_IN_TIME} น.`,
       `เช็คเอาท์: ${thaiDate(b.checkOut)} ภายในเวลา ${CHECK_OUT_TIME} น.`,
       `จำนวน: ${nights} คืน · ${b.guests} ท่าน`,
-      `ยอดชำระ: ${THB.format(b.totalPrice)}`,
+      paid
+        ? `ยอดชำระ: ${THB.format(b.totalPrice)}`
+        : `ยอดที่ต้องชำระ: ${THB.format(b.totalPrice)}`,
       `หมายเลขการจอง: ${b.bookingId}`,
       '',
+      ...(paid
+        ? []
+        : ['กรุณาชำระเงินผ่าน QR PromptPay ในแอป (เมนู My Bookings) แล้วอัปโหลดสลิป', '']),
       'แล้วพบกันที่ Poonsuk Resort',
     ].join('\n');
 

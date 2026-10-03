@@ -18,7 +18,8 @@
     "seed:rooms": "ts-node src/database/seed-rooms.ts",
     "seed:users": "ts-node src/database/seed-users.ts",
     "seed:restaurants": "ts-node src/database/seed-restaurants.ts",
-    "upload:restaurant-photos": "ts-node src/database/upload-restaurant-photos.ts"
+    "upload:restaurant-photos": "ts-node src/database/upload-restaurant-photos.ts",
+    "mail:test": "ts-node src/scripts/send-test-mail.ts"
   },
   "dependencies": {
     "@nestjs/bullmq": "^11.0.5",
