@@ -87,6 +87,10 @@ class _RecentTile extends StatelessWidget {
         return Colors.orange;
       case BookingStatus.cancelled:
         return Colors.red;
+      case BookingStatus.checkedIn:
+        return Colors.blue;
+      case BookingStatus.checkedOut:
+        return Colors.blueGrey;
     }
   }
 

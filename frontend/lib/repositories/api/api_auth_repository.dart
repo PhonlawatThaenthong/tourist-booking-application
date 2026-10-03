@@ -112,4 +112,26 @@ class ApiAuthRepository implements AuthRepository {
     }
     await _api.clearSession();
   }
+
+  @override
+  Future<void> forgotPassword({required String email}) async {
+    await _api.post(
+      '/api/auth/forgot-password',
+      body: {'email': email.trim()},
+      auth: false,
+    );
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await _api.post(
+      '/api/auth/reset-password',
+      body: {'email': email.trim(), 'code': code.trim(), 'newPassword': newPassword},
+      auth: false,
+    );
+  }
 }

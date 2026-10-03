@@ -3,9 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/restaurant.dart';
 import '../../blocs/restaurant/restaurant_bloc.dart';
-import '../../services/maps_service.dart';
+import '../../widgets/restaurant_photo.dart';
+import 'restaurant_detail_screen.dart';
 
-/// Recommended nearby restaurants with one-tap directions via Google Maps.
+/// Recommended nearby restaurants. Each card shows only what you scan by —
+/// photo, name, rating, cuisine; the rest is one tap away on the detail page.
 class RestaurantsScreen extends StatelessWidget {
   const RestaurantsScreen({super.key});
 
@@ -32,103 +34,56 @@ class _RestaurantCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AspectRatio(
-            aspectRatio: 16 / 9,
-            child: Image.network(
-              restaurant.imageUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(
-                color: Colors.grey.shade200,
-                child: const Icon(Icons.restaurant, size: 48),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => RestaurantDetailScreen(restaurant: restaurant),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RestaurantPhoto(restaurant: restaurant),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    restaurant.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 17,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.star, color: Colors.amber.shade700, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        restaurant.rating.toStringAsFixed(1),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          restaurant.cuisine,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        restaurant.name,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                    ),
-                    Icon(Icons.star, color: Colors.amber.shade700, size: 18),
-                    const SizedBox(width: 2),
-                    Text(
-                      restaurant.rating.toStringAsFixed(1),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${restaurant.cuisine} · ${restaurant.priceRange} · '
-                  '${restaurant.distanceKm} km away',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 8),
-                Text(restaurant.description),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_outlined,
-                      size: 16,
-                      color: Colors.grey.shade600,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        restaurant.address,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => MapsService.openLocation(
-                          lat: restaurant.latitude,
-                          lng: restaurant.longitude,
-                          label: restaurant.name,
-                        ),
-                        icon: const Icon(Icons.map_outlined),
-                        label: const Text('View on map'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: () => MapsService.openDirections(
-                          destLat: restaurant.latitude,
-                          destLng: restaurant.longitude,
-                        ),
-                        icon: const Icon(Icons.directions),
-                        label: const Text('Directions'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

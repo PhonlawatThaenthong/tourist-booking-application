@@ -1,3 +1,11 @@
+/**
+ * Published check-in / check-out hours, quoted in the confirmation email.
+ * Mirrors AppConfig.checkInTime / checkOutTime in the Flutter app — change
+ * both together. Display only: nothing enforces them.
+ */
+export const CHECK_IN_TIME = '14:00';
+export const CHECK_OUT_TIME = '12:00';
+
 /** BullMQ queue that holds delayed "release this unpaid booking" jobs. */
 export const BOOKING_EXPIRY_QUEUE = 'booking-expiry';
 

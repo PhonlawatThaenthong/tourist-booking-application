@@ -40,24 +40,20 @@ class MockData {
     Room(
       id: 'r-101',
       name: 'P1',
-      type: RoomType.standard,
+      type: RoomType.single,
       pricePerNight: 650,
       capacity: 2,
-      description:
-          'Spacious deluxe room with a private balcony overlooking the bay '
-          'and a king-size bed.',
+      description: 'Single bedroom with a king-size bed.',
       imageUrls: const ['image/P2.jpg', 'image/single_bed.jpg'],
       amenities: const ['Wi-Fi', 'Air conditioning', 'TV', 'Mini fridge', 'Coffee'],
     ),
     Room(
       id: 'r-205',
       name: 'P2',
-      type: RoomType.deluxe,
+      type: RoomType.single,
       pricePerNight: 650,
       capacity: 2,
-      description:
-          'Spacious deluxe room with a private balcony overlooking the bay '
-          'and a king-size bed.',
+      description: 'Single bedroom with a king-size bed.',
       imageUrls: const ['image/single_bed.jpg', 'image/P2.jpg'],
       amenities: const [
         'Wi-Fi',
@@ -69,12 +65,10 @@ class MockData {
     Room(
       id: 'r-310',
       name: 'P3',
-      type: RoomType.suite,
+      type: RoomType.twin,
       pricePerNight: 650,
       capacity: 2,
-      description:
-          'Luxurious suite with a separate living area, premium amenities '
-          'and panoramic sea views.',
+      description: 'Twin bedroom with twin beds.',
       imageUrls: const ['image/twin_bed.jpg', 'image/P3.jpg'],
       amenities: const [
         'Wi-Fi',
@@ -87,12 +81,10 @@ class MockData {
     Room(
       id: 'r-402',
       name: 'P4',
-      type: RoomType.family,
+      type: RoomType.twin,
       pricePerNight: 650,
       capacity: 2,
-      description:
-          'Perfect for families: two queen beds, extra space, and '
-          'kid-friendly amenities.',
+      description: 'Twin bedroom with twin beds.',
       imageUrls: const ['image/twin_bed2.jpg', 'image/P4.jpg'],
       amenities: const [
         'Wi-Fi',
@@ -105,12 +97,10 @@ class MockData {
     Room(
       id: 'r-f1',
       name: 'F1',
-      type: RoomType.standard,
+      type: RoomType.single,
       pricePerNight: 650,
       capacity: 2,
-      description:
-          'Comfortable twin room ideal for friends or colleagues '
-          'travelling together.',
+      description: 'Single bedroom with a king-size bed.',
       imageUrls: const ['image/A_set1.jpg', 'image/F1.jpg'],
       amenities: const ['Wi-Fi', 'Air conditioning', 'TV', 'Coffee'],
       status: RoomStatus.available,
@@ -118,12 +108,10 @@ class MockData {
     Room(
       id: 'r-f2',
       name: 'F2',
-      type: RoomType.standard,
+      type: RoomType.single,
       pricePerNight: 650,
       capacity: 2,
-      description:
-          'Comfortable twin room ideal for friends or colleagues '
-          'travelling together.',
+      description: 'Single bedroom with a king-size bed.',
       imageUrls: const ['image/A_set1.jpg', 'image/F2.jpg'],
       amenities: const ['Wi-Fi', 'Air conditioning', 'TV', 'Coffee'],
       status: RoomStatus.maintenance,

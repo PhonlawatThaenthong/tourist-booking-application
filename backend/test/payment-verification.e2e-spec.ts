@@ -70,7 +70,7 @@ describe('Payment slip verification (e2e)', () => {
     const [room] = await ds.query(
       `INSERT INTO rooms (name, type, price_per_night, capacity)
        VALUES ($1, $2, $3, $4) RETURNING id`,
-      [`Slip Test Room ${stamp}`, RoomType.DELUXE, 1500, 4],
+      [`Slip Test Room ${stamp}`, RoomType.SINGLE, 1500, 4],
     );
     roomId = room.id;
 

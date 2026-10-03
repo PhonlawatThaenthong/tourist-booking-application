@@ -1,6 +1,9 @@
 import {
-  Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, UseGuards,
+  Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, UploadedFile,
+  UseGuards, UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadedImage } from '../../common/uploaded-image';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
@@ -35,6 +38,17 @@ export class StaffRoomsController {
   @Patch(':id')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateRoomDto) {
     return this.rooms.update(id, dto);
+  }
+
+  /** Add one photo (multipart/form-data, field `image`); it goes to the end of the list. */
+  @Post(':id/images')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('image'))
+  addImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() image: UploadedImage | undefined,
+  ) {
+    return this.rooms.addImage(id, image);
   }
 
   @Delete(':id')

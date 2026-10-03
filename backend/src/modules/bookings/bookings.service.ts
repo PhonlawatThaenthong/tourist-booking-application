@@ -1,5 +1,5 @@
 import {
-  BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException,
+  BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
@@ -18,12 +18,37 @@ import {
 } from '../payments/payment.response';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BOOKING_EXPIRY_QUEUE, getBookingHoldMs } from '../../config/booking.config';
+import { withQueueTimeout } from '../../config/redis.config';
+import { RedisCacheService } from '../cache/redis-cache.service';
+import { RedisLockService, roomLockKey } from '../cache/redis-lock.service';
+import { ROOMS_CACHE_NAMESPACE } from '../rooms/rooms-cache';
 
-/** Postgres SQLSTATEs that both mean "someone else got this range first". */
+/** Postgres SQLSTATEs that all mean "someone else got this range first". */
 const PG_EXCLUSION_VIOLATION = '23P01';
 const PG_SERIALIZATION_FAILURE = '40001';
+// Two concurrent inserts can grab the GiST index pages in opposite orders, in
+// which case Postgres breaks the tie by killing one with a deadlock instead of
+// the exclusion violation above. Same outcome for the caller — they lost the
+// race — so it must map to the same 409, not fall through as an unhandled 500.
+const PG_DEADLOCK_DETECTED = '40P01';
+
+const PG_LOST_THE_RACE = new Set<string>([
+  PG_EXCLUSION_VIOLATION,
+  PG_SERIALIZATION_FAILURE,
+  PG_DEADLOCK_DETECTED,
+]);
 
 const RELATIONS = { room: true, customer: true } as const;
+
+/**
+ * Today's date at the resort as `YYYY-MM-DD`, the same shape as the stored
+ * checkIn/checkOut, so the two compare as plain strings. Pinned to Bangkok
+ * rather than the server clock: the container runs in UTC, which would still
+ * report "yesterday" for the first seven hours of a Thai day.
+ */
+function todayAtResort(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Bangkok' }).format(new Date());
+}
 
 @Injectable()
 export class BookingsService {
@@ -33,9 +58,12 @@ export class BookingsService {
     private readonly payments: PaymentsService,
     private readonly notifications: NotificationsService,
     @InjectQueue(BOOKING_EXPIRY_QUEUE) private readonly expiryQueue: Queue,
+    private readonly cache: RedisCacheService,
+    private readonly locks: RedisLockService,
   ) {}
 
   private readonly holdMs = getBookingHoldMs();
+  private readonly logger = new Logger(BookingsService.name);
 
   /**
    * `POST /api/bookings`.
@@ -49,44 +77,58 @@ export class BookingsService {
    * they are the same event: the range was taken. No retry loop here — a retry
    * would silently book a range the customer saw as free a moment ago, so the
    * app re-queries and lets the customer choose.
+   *
+   * The transaction runs under `lock:room:<roomId>` in Redis, so requests for
+   * the same room — from any API instance — queue up instead of colliding in
+   * Postgres. Other rooms use other keys and never wait. The lock is released
+   * when the transaction ends, not when the hold expires; the hold itself is
+   * the `pending` row.
    */
   async create(customerId: string, dto: CreateBookingDto): Promise<BookingResponse> {
     this.assertRange(dto.checkIn, dto.checkOut);
 
     try {
-      const id = await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
-        const room = await manager.getRepository(Room).findOne({ where: { id: dto.roomId } });
-        if (!room) throw new NotFoundException('ไม่พบห้องพัก');
-        if (room.status !== RoomStatus.AVAILABLE) {
-          throw new ConflictException('ห้องนี้ปิดปรับปรุงอยู่');
-        }
-        if (dto.guests > room.capacity) {
-          throw new BadRequestException(`ห้องนี้รองรับได้สูงสุด ${room.capacity} คน`);
-        }
+      const id = await this.locks.withLock(roomLockKey(dto.roomId), () =>
+        this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+          const room = await manager.getRepository(Room).findOne({ where: { id: dto.roomId } });
+          if (!room) throw new NotFoundException('ไม่พบห้องพัก');
+          if (room.status !== RoomStatus.AVAILABLE) {
+            throw new ConflictException('ห้องนี้ปิดปรับปรุงอยู่');
+          }
+          if (dto.guests > room.capacity) {
+            throw new BadRequestException(`ห้องนี้รองรับได้สูงสุด ${room.capacity} คน`);
+          }
 
-        const nights = nightsBetween(dto.checkIn, dto.checkOut);
-        const booking = manager.getRepository(Booking).create({
-          roomId: room.id,
-          customerId,
-          checkIn: dto.checkIn,
-          checkOut: dto.checkOut,
-          guests: dto.guests,
-          // Priced from the row just read inside this transaction, never from
-          // anything the client sent.
-          totalPrice: Number((room.pricePerNight * nights).toFixed(2)),
-          status: BookingStatus.PENDING,
-          paymentStatus: PaymentStatus.UNPAID,
-        });
+          const nights = nightsBetween(dto.checkIn, dto.checkOut);
+          const booking = manager.getRepository(Booking).create({
+            roomId: room.id,
+            customerId,
+            checkIn: dto.checkIn,
+            checkOut: dto.checkOut,
+            guests: dto.guests,
+            // Priced from the row just read inside this transaction, never from
+            // anything the client sent.
+            totalPrice: Number((room.pricePerNight * nights).toFixed(2)),
+            status: BookingStatus.PENDING,
+            paymentStatus: PaymentStatus.UNPAID,
+          });
 
-        const saved = await manager.getRepository(Booking).save(booking);
-        return saved.id;
-      });
+          const saved = await manager.getRepository(Booking).save(booking);
+          return saved.id;
+        }));
 
+      // After commit, so no reader can re-cache the pre-booking answer.
+      await this.availabilityChanged();
       await this.scheduleExpiry(id);
       return this.getOrFail(id);
     } catch (err) {
       throw this.translateConflict(err);
     }
+  }
+
+  /** Room search/availability answers are now stale. Never throws. */
+  private availabilityChanged(): Promise<void> {
+    return this.cache.invalidate(ROOMS_CACHE_NAMESPACE);
   }
 
   /**
@@ -96,18 +138,20 @@ export class BookingsService {
    */
   private async scheduleExpiry(bookingId: string): Promise<void> {
     try {
-      await this.expiryQueue.add(
+      await withQueueTimeout(this.expiryQueue.add(
         'expire',
         { bookingId },
         {
           delay: this.holdMs,
-          jobId: `expire:${bookingId}`,
+          // BullMQ rejects custom ids containing ':'.
+          jobId: `expire-${bookingId}`,
           removeOnComplete: true,
           removeOnFail: true,
         },
-      );
-    } catch {
-      // Redis unavailable — ignore; booking creation must still succeed.
+      ));
+    } catch (err) {
+      // Booking creation must still succeed; the sweeper releases the hold.
+      this.logger.warn(`could not schedule expiry for booking ${bookingId}: ${err}`);
     }
   }
 
@@ -127,6 +171,7 @@ export class BookingsService {
     if (payment && payment.slipPath) return; // slip uploaded — leave for staff
     booking.status = BookingStatus.CANCELLED;
     await this.repo.save(booking);
+    await this.availabilityChanged();
   }
 
   /** `GET /api/bookings/me` */
@@ -199,7 +244,7 @@ export class BookingsService {
     const payment = await this.payments.getOrFail(paymentId);
     const booking = await this.repo.findOne({
       where: { id: payment.bookingId },
-      relations: { customer: true },
+      relations: { customer: true, room: true },
     });
     if (!booking) throw new NotFoundException('ไม่พบการจอง');
     if (booking.status === BookingStatus.CANCELLED) {
@@ -209,7 +254,12 @@ export class BookingsService {
     await this.payments.markVerified(paymentId, adminId);
 
     booking.paymentStatus = PaymentStatus.PAID;
-    booking.status = BookingStatus.APPROVED;
+    // Only a booking still awaiting approval moves forward. A guest can check
+    // in before paying (an admin may approve unpaid), and settling up later
+    // must not drag a checked-in or checked-out stay back to 'approved'.
+    if (booking.status === BookingStatus.PENDING) {
+      booking.status = BookingStatus.APPROVED;
+    }
     await this.repo.save(booking);
 
     await this.notifications.sendBookingConfirmation(booking, booking.customer.email);
@@ -238,31 +288,109 @@ export class BookingsService {
     if ((dto.checkIn === undefined) !== (dto.checkOut === undefined)) {
       throw new BadRequestException('การเลื่อนวันต้องระบุทั้ง checkIn และ checkOut');
     }
+    // These two have their own endpoints, which check the stay's dates and
+    // current state; a bare PATCH would skip both.
+    if (dto.status === BookingStatus.CHECKED_IN || dto.status === BookingStatus.CHECKED_OUT) {
+      throw new BadRequestException('ใช้ปุ่มเช็คอิน/เช็คเอาท์แทนการแก้สถานะโดยตรง');
+    }
+
+    // Rescheduling (or reviving a cancelled booking) claims nights on this
+    // booking's room, so it queues on the same per-room lock as create.
+    const current = await this.repo.findOne({
+      where: { id }, select: { id: true, roomId: true, status: true },
+    });
+    if (!current) throw new NotFoundException('ไม่พบการจอง');
 
     try {
-      await this.dataSource.transaction('SERIALIZABLE', async (manager) => {
-        const bookings = manager.getRepository(Booking);
-        const booking = await bookings.findOne({ where: { id }, relations: { room: true } });
-        if (!booking) throw new NotFoundException('ไม่พบการจอง');
+      await this.locks.withLock(roomLockKey(current.roomId), () =>
+        this.dataSource.transaction('SERIALIZABLE', async (manager) => {
+          const bookings = manager.getRepository(Booking);
+          const booking = await bookings.findOne({ where: { id }, relations: { room: true } });
+          if (!booking) throw new NotFoundException('ไม่พบการจอง');
+          if (booking.status === BookingStatus.CHECKED_OUT) {
+            throw new ConflictException('การเข้าพักนี้เช็คเอาท์ไปแล้ว แก้ไขไม่ได้');
+          }
 
-        if (dto.checkIn && dto.checkOut) {
-          this.assertRange(dto.checkIn, dto.checkOut);
-          booking.checkIn = dto.checkIn;
-          booking.checkOut = dto.checkOut;
-          // Re-priced from the stored nightly rate, as the repository contract
-          // in booking_repository.dart states.
-          booking.totalPrice = Number(
-            (booking.room.pricePerNight * nightsBetween(dto.checkIn, dto.checkOut)).toFixed(2),
-          );
-        }
-        if (dto.status) booking.status = dto.status;
+          if (dto.checkIn && dto.checkOut) {
+            this.assertRange(dto.checkIn, dto.checkOut);
+            booking.checkIn = dto.checkIn;
+            booking.checkOut = dto.checkOut;
+            // Re-priced from the stored nightly rate, as the repository contract
+            // in booking_repository.dart states.
+            booking.totalPrice = Number(
+              (booking.room.pricePerNight * nightsBetween(dto.checkIn, dto.checkOut)).toFixed(2),
+            );
+          }
+          if (dto.status) booking.status = dto.status;
 
-        await bookings.save(booking);
-      });
+          await bookings.save(booking);
+        }));
     } catch (err) {
       throw this.translateConflict(err);
     }
 
+    await this.availabilityChanged();
+    if (dto.status === BookingStatus.APPROVED && current.status !== BookingStatus.APPROVED) {
+      await this.notifyApproved(id);
+    }
+    return this.getOrFail(id);
+  }
+
+  /**
+   * An admin just approved the booking from manage_bookings: email the guest.
+   * Only on the transition into `approved`, so re-saving an approved booking
+   * (e.g. a reschedule that also sends status) does not email again. The
+   * PATCH has already committed, so a failure here is logged, never thrown.
+   */
+  private async notifyApproved(id: string): Promise<void> {
+    try {
+      const booking = await this.repo.findOne({ where: { id }, relations: RELATIONS });
+      if (booking?.customer?.email) {
+        await this.notifications.sendBookingConfirmation(booking, booking.customer.email);
+      }
+    } catch (err) {
+      this.logger.warn(`could not queue approval email for booking ${id}: ${err}`);
+    }
+  }
+
+  /**
+   * `POST /api/staff/bookings/:id/check-in` — the guest has arrived.
+   *
+   * Only a paid (approved) booking, and only between its check-in day and the
+   * day before check-out. The published check-in hour is not enforced: letting
+   * someone in early is the front desk's call, not the server's.
+   */
+  async checkIn(id: string): Promise<BookingResponse> {
+    const booking = await this.repo.findOne({ where: { id } });
+    if (!booking) throw new NotFoundException('ไม่พบการจอง');
+    if (booking.status !== BookingStatus.APPROVED) {
+      throw new ConflictException('เช็คอินได้เฉพาะการจองที่อนุมัติและชำระเงินแล้ว');
+    }
+    const today = todayAtResort();
+    if (today < booking.checkIn) {
+      throw new BadRequestException('ยังไม่ถึงวันเช็คอินของการจองนี้');
+    }
+    if (today >= booking.checkOut) {
+      throw new BadRequestException('เลยวันเช็คเอาท์ของการจองนี้แล้ว');
+    }
+    booking.status = BookingStatus.CHECKED_IN;
+    await this.repo.save(booking);
+    return this.getOrFail(id);
+  }
+
+  /**
+   * `POST /api/staff/bookings/:id/check-out` — closes the booking. Allowed on
+   * any day, since guests do leave early; the room stays held for the rest of
+   * the booked range either way.
+   */
+  async checkOut(id: string): Promise<BookingResponse> {
+    const booking = await this.repo.findOne({ where: { id } });
+    if (!booking) throw new NotFoundException('ไม่พบการจอง');
+    if (booking.status !== BookingStatus.CHECKED_IN) {
+      throw new ConflictException('เช็คเอาท์ได้เฉพาะการจองที่เช็คอินแล้ว');
+    }
+    booking.status = BookingStatus.CHECKED_OUT;
+    await this.repo.save(booking);
     return this.getOrFail(id);
   }
 
@@ -273,6 +401,19 @@ export class BookingsService {
     if (actorRole === UserRole.CUSTOMER && booking.customerId !== actorId) {
       throw new ForbiddenException('ไม่มีสิทธิ์เข้าถึงการจองนี้');
     }
+    if (booking.status === BookingStatus.CANCELLED) {
+      throw new ConflictException('การจองนี้ถูกยกเลิกไปแล้ว');
+    }
+    if (booking.status === BookingStatus.CHECKED_OUT) {
+      throw new ConflictException('การเข้าพักนี้เช็คเอาท์ไปแล้ว ยกเลิกไม่ได้');
+    }
+    // A paid booking is refunded below, so a customer must not be able to
+    // cancel once the stay has started — otherwise they could check out and
+    // then claim their money back. Staff keep the power, to settle no-shows
+    // and disputes by hand.
+    if (actorRole === UserRole.CUSTOMER && booking.checkIn <= todayAtResort()) {
+      throw new BadRequestException('ยกเลิกได้ก่อนวันเช็คอินเท่านั้น');
+    }
 
     const wasPaid = booking.paymentStatus === PaymentStatus.PAID;
     booking.status = BookingStatus.CANCELLED;
@@ -280,6 +421,7 @@ export class BookingsService {
       booking.paymentStatus = PaymentStatus.REFUNDED;
     }
     await this.repo.save(booking);
+    await this.availabilityChanged();
     if (wasPaid) {
       await this.payments.recordRefund(booking.id);
     }
@@ -302,13 +444,13 @@ export class BookingsService {
   }
 
   /**
-   * Turns the two "you lost the race" SQLSTATEs into a 409 the Flutter
+   * Turns the "you lost the race" SQLSTATEs into a 409 the Flutter
    * `RepositoryException(statusCode: 409)` already knows how to display.
    */
   private translateConflict(err: unknown): unknown {
     if (err instanceof QueryFailedError) {
       const code = (err.driverError as { code?: string }).code;
-      if (code === PG_EXCLUSION_VIOLATION || code === PG_SERIALIZATION_FAILURE) {
+      if (code !== undefined && PG_LOST_THE_RACE.has(code)) {
         return new ConflictException('ห้องนี้ถูกจองในช่วงวันที่เลือกแล้ว');
       }
     }

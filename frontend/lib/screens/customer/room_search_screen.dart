@@ -11,8 +11,13 @@ import 'date_selection_screen.dart';
 import 'hotel_location_screen.dart';
 import 'room_detail_screen.dart';
 
-/// Real-time room search with date, type and price filters. The list updates
-/// instantly as the user changes any filter.
+/// Home tab: a hero photo of the resort above a real-time room search with
+/// date and type filters. The list updates instantly as the user changes any
+/// filter.
+///
+/// There is deliberately no price or guest filter: every room costs the same
+/// and sleeps the same party, so either control would never change the
+/// results. The guest count is still asked for, at booking time.
 class RoomSearchScreen extends StatefulWidget {
   const RoomSearchScreen({super.key});
 
@@ -23,30 +28,27 @@ class RoomSearchScreen extends StatefulWidget {
 class _RoomSearchScreenState extends State<RoomSearchScreen> {
   DateTimeRange? _dateRange;
   final Set<RoomType> _types = {};
-  final int _guests = 1;
-  RangeValues? _priceRange;
   String _query = '';
 
   @override
   Widget build(BuildContext context) {
     final roomProvider = context.watch<RoomBloc>();
 
-    final minPrice = roomProvider.minRoomPrice;
-    final maxPrice = roomProvider.maxRoomPrice;
-    final price = _priceRange ?? RangeValues(minPrice, maxPrice);
-
     final filter = RoomFilter(
       checkIn: _dateRange?.start,
       checkOut: _dateRange?.end,
       types: _types,
-      minPrice: price.start,
-      maxPrice: price.end,
-      guests: _guests,
       query: _query,
     );
 
     final results =
         roomProvider.search(filter, isRoomBooked: roomProvider.isRoomBooked);
+
+    // Hero figures come from the live inventory rather than being written into
+    // the copy, so they stay true when rooms are added or repriced.
+    final bookable = roomProvider.allRooms
+        .where((r) => r.status == RoomStatus.available)
+        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -67,18 +69,24 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
           SliverToBoxAdapter(
+            child: _ResortHero(
+              roomCount: bookable.length,
+              fromPrice: bookable.isEmpty
+                  ? null
+                  : bookable
+                      .map((r) => r.pricePerNight)
+                      .reduce((a, b) => a < b ? a : b),
+            ),
+          ),
+          SliverToBoxAdapter(
             child: _FilterBar(
               dateRange: _dateRange,
               types: _types,
-              price: price,
-              minPrice: minPrice,
-              maxPrice: maxPrice,
               onSearchChanged: (v) => setState(() => _query = v),
               onPickDates: _pickDates,
               onToggleType: (t) => setState(() {
                 _types.contains(t) ? _types.remove(t) : _types.add(t);
               }),
-              onPriceChanged: (r) => setState(() => _priceRange = r),
             ),
           ),
           SliverToBoxAdapter(
@@ -126,7 +134,6 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
                           builder: (_) => RoomDetailScreen(
                             room: room,
                             initialRange: _dateRange,
-                            initialGuests: _guests,
                           ),
                         ),
                       ),
@@ -158,27 +165,92 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
   }
 }
 
+/// Every photo in `image/` carries a "Galaxy S24 Ultra" stamp in the
+/// bottom-left corner. The 2:1 hero frame is wider than the 16:9 photo, so
+/// anchoring the crop to the top trims that strip off the bottom.
+const _photoAlignment = Alignment.topCenter;
+
+const _heroImage = 'image/view.jpg';
+
+class _ResortHero extends StatelessWidget {
+  final int roomCount;
+  final double? fromPrice;
+
+  const _ResortHero({required this.roomCount, required this.fromPrice});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final price = fromPrice;
+    return AspectRatio(
+      aspectRatio: 2,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            _heroImage,
+            fit: BoxFit.cover,
+            alignment: _photoAlignment,
+          ),
+          // Darkens the lower half so the white caption stays legible over
+          // the lit cottage fronts.
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.transparent, Colors.black87],
+                stops: [0.35, 1],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 14,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Stay in Sadao, Songkhla',
+                  style: textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (roomCount > 0 && price != null)
+                  Text(
+                    '${_plural(roomCount, 'room')} · '
+                    'from ${Format.money(price)} / night',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: Colors.white70,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _plural(int n, String noun) => '$n ${n == 1 ? noun : '${noun}s'}';
+
 class _FilterBar extends StatelessWidget {
   final DateTimeRange? dateRange;
   final Set<RoomType> types;
-  final RangeValues price;
-  final double minPrice;
-  final double maxPrice;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onPickDates;
   final ValueChanged<RoomType> onToggleType;
-  final ValueChanged<RangeValues> onPriceChanged;
 
   const _FilterBar({
     required this.dateRange,
     required this.types,
-    required this.price,
-    required this.minPrice,
-    required this.maxPrice,
     required this.onSearchChanged,
     required this.onPickDates,
     required this.onToggleType,
-    required this.onPriceChanged,
   });
 
   @override
@@ -230,27 +302,6 @@ class _FilterBar extends StatelessWidget {
                 }).toList(),
               ),
             ),
-            Row(
-              children: [
-                const Icon(Icons.payments_outlined, size: 18),
-                const SizedBox(width: 4),
-                Text(
-                  '${Format.money(price.start)} - ${Format.money(price.end)}',
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ],
-            ),
-            RangeSlider(
-              values: price,
-              min: minPrice,
-              max: maxPrice,
-              divisions: 20,
-              labels: RangeLabels(
-                Format.money(price.start),
-                Format.money(price.end),
-              ),
-              onChanged: onPriceChanged,
-            ),
           ],
         ),
       ),
@@ -300,7 +351,7 @@ class _EmptyState extends StatelessWidget {
           Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 12),
           const Text('No rooms match your filters'),
-          Text('Try widening your dates or price range',
+          Text('Try different dates or another room type',
               style: TextStyle(color: Colors.grey.shade600)),
         ],
       ),

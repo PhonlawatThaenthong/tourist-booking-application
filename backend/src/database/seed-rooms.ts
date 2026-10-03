@@ -27,68 +27,56 @@ const ROOMS: Array<{
 }> = [
   {
     name: 'P1',
-    type: RoomType.STANDARD,
+    type: RoomType.SINGLE,
     pricePerNight: 650,
     capacity: 2,
-    description:
-      'Spacious deluxe room with a private balcony overlooking the bay '
-      + 'and a king-size bed.',
+    description: 'Single bedroom with a king-size bed.',
     imageUrls: ['image/P2.jpg', 'image/single_bed.jpg'],
     amenities: ['Wi-Fi', 'Air conditioning', 'TV', 'Mini fridge', 'Coffee'],
   },
   {
     name: 'P2',
-    type: RoomType.DELUXE,
+    type: RoomType.SINGLE,
     pricePerNight: 650,
     capacity: 2,
-    description:
-      'Spacious deluxe room with a private balcony overlooking the bay '
-      + 'and a king-size bed.',
+    description: 'Single bedroom with a king-size bed.',
     imageUrls: ['image/single_bed.jpg', 'image/P2.jpg'],
     amenities: ['Wi-Fi', 'Air conditioning', 'TV', 'Coffee'],
   },
   {
     name: 'P3',
-    type: RoomType.SUITE,
+    type: RoomType.TWIN,
     pricePerNight: 650,
     capacity: 2,
-    description:
-      'Luxurious suite with a separate living area, premium amenities '
-      + 'and panoramic sea views.',
+    description: 'Twin bedroom with twin beds.',
     imageUrls: ['image/twin_bed.jpg', 'image/P3.jpg'],
     amenities: ['Wi-Fi', 'Air conditioning', 'TV', 'Two beds', 'Coffee'],
   },
   {
     name: 'P4',
-    type: RoomType.FAMILY,
+    type: RoomType.TWIN,
     pricePerNight: 650,
     capacity: 2,
-    description:
-      'Perfect for families: two queen beds, extra space, and '
-      + 'kid-friendly amenities.',
+    description: 'Twin bedroom with twin beds.',
     imageUrls: ['image/twin_bed2.jpg', 'image/P4.jpg'],
     amenities: ['Wi-Fi', 'Air conditioning', 'TV', 'Two beds', 'Coffee'],
   },
   {
     name: 'F1',
-    type: RoomType.STANDARD,
+    type: RoomType.SINGLE,
     pricePerNight: 650,
     capacity: 2,
-    description:
-      'Comfortable twin room ideal for friends or colleagues '
-      + 'travelling together.',
+    description: 'Single bedroom with a king-size bed.',
     imageUrls: ['image/A_set1.jpg', 'image/F1.jpg'],
     amenities: ['Wi-Fi', 'Air conditioning', 'TV', 'Coffee'],
     status: RoomStatus.AVAILABLE,
   },
   {
     name: 'F2',
-    type: RoomType.STANDARD,
+    type: RoomType.SINGLE,
     pricePerNight: 650,
     capacity: 2,
-    description:
-      'Comfortable twin room ideal for friends or colleagues '
-      + 'travelling together.',
+    description: 'Single bedroom with a king-size bed.',
     imageUrls: ['image/A_set1.jpg', 'image/F2.jpg'],
     amenities: ['Wi-Fi', 'Air conditioning', 'TV', 'Coffee'],
     status: RoomStatus.MAINTENANCE,

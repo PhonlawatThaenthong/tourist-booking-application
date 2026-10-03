@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsNumber, IsString, Length, Max, Min } from 'class-validator';
+import { IsNumber, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 
 export class CreateRestaurantDto {
   @IsString() @Length(1, 120)
@@ -17,8 +17,9 @@ export class CreateRestaurantDto {
   @IsString() @Length(1, 4000)
   description!: string;
 
-  @IsString() @Length(1, 500)
-  imageUrl!: string;
+  /** Optional now that photos are uploaded to POST /staff/restaurants/:id/image. */
+  @IsOptional() @IsString() @Length(0, 500)
+  imageUrl?: string;
 
   @IsString() @Length(1, 255)
   address!: string;

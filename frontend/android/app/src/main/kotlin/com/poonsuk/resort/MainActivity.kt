@@ -1,4 +1,4 @@
-package com.example.hotel_booking
+package com.poonsuk.resort
 
 import io.flutter.embedding.android.FlutterActivity
 

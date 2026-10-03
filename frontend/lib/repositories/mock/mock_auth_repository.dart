@@ -103,6 +103,28 @@ class MockAuthRepository implements AuthRepository {
     await prefs.remove(_prefsKey);
   }
 
+  /// Mirrors the API's no-enumeration behaviour: succeeds either way.
+  @override
+  Future<void> forgotPassword({required String email}) async {
+    await Future<void>.delayed(_latency);
+  }
+
+  /// No email is actually sent in the mock, so any 6-digit code is accepted.
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    await Future<void>.delayed(_latency);
+    final normalised = email.trim().toLowerCase();
+    final index = _users.indexWhere((u) => u.email.toLowerCase() == normalised);
+    if (index == -1) {
+      throw const RepositoryException('รหัสยืนยันไม่ถูกต้องหรือหมดอายุ');
+    }
+    _users[index] = _users[index].copyWith(password: newPassword);
+  }
+
   AppUser _add({
     required String name,
     required String email,

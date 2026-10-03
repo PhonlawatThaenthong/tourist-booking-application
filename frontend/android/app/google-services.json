@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "8266685671",
+    "project_id": "poonsuk-resort-b8c5e",
+    "storage_bucket": "poonsuk-resort-b8c5e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:8266685671:android:9c92c1aba4dd23a44b9642",
+        "android_client_info": {
+          "package_name": "com.poonsuk.resort"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDoluKtkdFFEtG84WiucnvOxj-ImZ7roG8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../models/room.dart';
 
 /// Data access for rooms. Backend: `/api/rooms` and `/api/staff/rooms`.
@@ -28,6 +30,14 @@ abstract class RoomRepository {
 
   /// Backend: `PATCH /api/staff/rooms/:id` — availability/maintenance.
   Future<Room> updateStatus(String id, RoomStatus status);
+
+  /// Backend: `POST /api/staff/rooms/:id/images`. Uploads one photo and
+  /// returns the room with it appended to [Room.imageUrls].
+  Future<Room> addRoomPhoto(
+    String roomId, {
+    required Uint8List bytes,
+    required String filename,
+  });
 
   /// Backend: `DELETE /api/staff/rooms/:id`.
   Future<void> deleteRoom(String id);

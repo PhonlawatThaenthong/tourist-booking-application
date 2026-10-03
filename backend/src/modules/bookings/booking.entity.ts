@@ -11,6 +11,10 @@ export enum BookingStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   CANCELLED = 'cancelled',
+  /** Set only by POST /api/staff/bookings/:id/check-in. */
+  CHECKED_IN = 'checked_in',
+  /** Set only by POST /api/staff/bookings/:id/check-out; the stay is closed. */
+  CHECKED_OUT = 'checked_out',
 }
 
 /** Mirrors PaymentStatus in frontend/lib/models/booking.dart */

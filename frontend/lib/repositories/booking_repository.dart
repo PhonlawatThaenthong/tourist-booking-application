@@ -23,7 +23,21 @@ abstract class BookingRepository {
     required double totalPrice,
   });
 
-  /// Backend: `PATCH /api/staff/bookings/:id` — status transition.
+  /// Backend: `POST /api/bookings/:id/cancel` — the customer's own cancel.
+  /// Allowed only before the check-in day; a paid booking comes back
+  /// REFUNDED. Staff cancel through [updateStatus] instead.
+  Future<Booking> cancelBooking(String id);
+
+  /// Backend: `POST /api/staff/bookings/:id/check-in`. Only an approved
+  /// booking, from its check-in day until the day before check-out.
+  Future<Booking> checkIn(String id);
+
+  /// Backend: `POST /api/staff/bookings/:id/check-out` — closes the booking.
+  /// Only a checked-in one.
+  Future<Booking> checkOut(String id);
+
+  /// Backend: `PATCH /api/staff/bookings/:id` — status transition. Refuses
+  /// checked-in/out, which go through [checkIn] and [checkOut].
   Future<Booking> updateStatus(String id, BookingStatus status);
 
   /// Backend: `PATCH /api/staff/bookings/:id` — new date range.

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import '../../models/room.dart';
 import '../room_repository.dart';
 import 'api_client.dart';
@@ -15,7 +17,7 @@ class ApiRoomRepository implements RoomRepository {
     final path = _api.isStaffSide ? '/api/staff/rooms' : '/api/rooms';
     final data = await _api.get(path, auth: _api.isStaffSide) as List<dynamic>;
     return data
-        .map((e) => roomFromJson(e as Map<String, dynamic>))
+        .map((e) => roomFromJson(e as Map<String, dynamic>, _api.resolveMediaUrl))
         .toList(growable: false);
   }
 
@@ -47,7 +49,7 @@ class ApiRoomRepository implements RoomRepository {
 
     final data = await _api.get('/api/rooms', query: query, auth: false) as List<dynamic>;
     return data
-        .map((e) => roomFromJson(e as Map<String, dynamic>))
+        .map((e) => roomFromJson(e as Map<String, dynamic>, _api.resolveMediaUrl))
         .toList(growable: false);
   }
 
@@ -67,10 +69,10 @@ class ApiRoomRepository implements RoomRepository {
       'pricePerNight': pricePerNight,
       'capacity': capacity,
       'description': description,
-      'imageUrls': imageUrls,
+      'imageUrls': imageUrls.map(_api.toStoredMediaUrl).toList(),
       'amenities': amenities,
     });
-    return roomFromJson(data as Map<String, dynamic>);
+    return roomFromJson(data as Map<String, dynamic>, _api.resolveMediaUrl);
   }
 
   @override
@@ -81,11 +83,11 @@ class ApiRoomRepository implements RoomRepository {
       'pricePerNight': room.pricePerNight,
       'capacity': room.capacity,
       'description': room.description,
-      'imageUrls': room.imageUrls,
+      'imageUrls': room.imageUrls.map(_api.toStoredMediaUrl).toList(),
       'amenities': room.amenities,
       'status': room.status.name,
     });
-    return roomFromJson(data as Map<String, dynamic>);
+    return roomFromJson(data as Map<String, dynamic>, _api.resolveMediaUrl);
   }
 
   @override
@@ -94,7 +96,7 @@ class ApiRoomRepository implements RoomRepository {
       '/api/staff/rooms/$id',
       body: {'pricePerNight': pricePerNight},
     );
-    return roomFromJson(data as Map<String, dynamic>);
+    return roomFromJson(data as Map<String, dynamic>, _api.resolveMediaUrl);
   }
 
   @override
@@ -103,20 +105,40 @@ class ApiRoomRepository implements RoomRepository {
       '/api/staff/rooms/$id',
       body: {'status': status.name},
     );
-    return roomFromJson(data as Map<String, dynamic>);
+    return roomFromJson(data as Map<String, dynamic>, _api.resolveMediaUrl);
+  }
+
+  @override
+  Future<Room> addRoomPhoto(
+    String roomId, {
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    final data = await _api.multipart(
+      '/api/staff/rooms/$roomId/images',
+      field: 'image',
+      bytes: bytes,
+      filename: filename,
+    );
+    return roomFromJson(data as Map<String, dynamic>, _api.resolveMediaUrl);
   }
 
   @override
   Future<void> deleteRoom(String id) => _api.delete('/api/staff/rooms/$id');
 }
 
-Room roomFromJson(Map<String, dynamic> json) {
+/// [resolveMediaUrl] turns the API paths of uploaded photos into loadable
+/// URLs; see [ApiClient.resolveMediaUrl].
+Room roomFromJson(
+  Map<String, dynamic> json,
+  String Function(String url) resolveMediaUrl,
+) {
   return Room(
     id: json['id'] as String,
     name: json['name'] as String,
     type: RoomType.values.firstWhere(
       (t) => t.name == json['type'],
-      orElse: () => RoomType.standard,
+      orElse: () => RoomType.single,
     ),
     // numeric(10,2) is serialised as a JSON number by the API transformer, but
     // `num` covers the case where it arrives as an int (e.g. 2500 not 2500.0).
@@ -124,7 +146,7 @@ Room roomFromJson(Map<String, dynamic> json) {
     capacity: (json['capacity'] as num).toInt(),
     description: (json['description'] as String?) ?? '',
     imageUrls: ((json['imageUrls'] as List<dynamic>?) ?? const [])
-        .map((e) => e as String)
+        .map((e) => resolveMediaUrl(e as String))
         .toList(),
     amenities: ((json['amenities'] as List<dynamic>?) ?? const [])
         .map((e) => e as String)

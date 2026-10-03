@@ -35,6 +35,13 @@ export class UsersService {
       .getOne();
   }
 
+  findByEmail(email: string): Promise<User | null> {
+    return this.repo
+      .createQueryBuilder('u')
+      .where('LOWER(u.email) = LOWER(:email)', { email })
+      .getOne();
+  }
+
   async create(input: {
     name: string; email: string; phone?: string; password: string; role?: UserRole;
   }): Promise<User> {
@@ -80,5 +87,11 @@ export class UsersService {
 
   static verifyPassword(plain: string, hash: string): Promise<boolean> {
     return bcrypt.compare(plain, hash);
+  }
+
+  /** Used by `POST /api/auth/reset-password` once the reset code checks out. */
+  async updatePassword(userId: string, newPassword: string): Promise<void> {
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.repo.update({ id: userId }, { passwordHash });
   }
 }

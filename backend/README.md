@@ -41,6 +41,41 @@ docker compose up --build
 | GET | `/health/live` | liveness, no dependency check |
 | GET | `/health/ready` | readiness, pings the database |
 
+## Redis cache (room search)
+
+`GET /api/rooms` and `GET /api/rooms/availability` are cache-aside in Redis
+(`src/modules/cache`). Every response carries `X-Cache: HIT | MISS | BYPASS`.
+
+- Key: `poonsuk:cache:rooms:v<version>:<sha1 of query params>`, TTL `CACHE_TTL_SECONDS` (60).
+- Invalidation: one `INCR poonsuk:cache:rooms:version` after any committed write that
+  changes availability (room create/update/photo/delete, booking create/reschedule/
+  status/cancel/expiry, sweeper). Old keys become unreachable and expire on their own.
+  The list of write paths lives in `src/modules/rooms/rooms-cache.ts`.
+- Fail-open: if Redis is down or slow (> `CACHE_OP_TIMEOUT_MS`), requests read Postgres
+  (`BYPASS`). Booking correctness never depends on the cache — `POST /api/bookings`
+  re-checks inside its transaction and the exclusion constraint has the last word.
+- Seed scripts and manual SQL do not invalidate; their changes appear within the TTL.
+
+```powershell
+curl.exe -i "http://localhost:3000/api/rooms?checkIn=2026-12-01&checkOut=2026-12-03"   # MISS, then HIT
+docker compose exec redis sh -c 'redis-cli --scan --pattern "poonsuk:cache:*"'
+```
+
+## Redis lock (booking, per room)
+
+`POST /api/bookings` and `PATCH /api/staff/bookings/:id` run their transaction under
+`poonsuk:lock:room:<roomId>` (`src/modules/cache/redis-lock.service.ts`).
+
+- One key per room: bookings for different rooms never wait on each other.
+- Acquire `SET key <uuid> NX PX LOCK_TTL_MS`; release with a Lua compare-and-delete, so
+  a request whose lock expired can never delete the next holder's lock.
+- Held for the transaction only (milliseconds), not for the unpaid-hold period — the hold
+  is the `pending` row. A second request for the same room retries every 20–50 ms for up
+  to `LOCK_WAIT_MS`, then gets 503.
+- Fail-open: Redis down → the booking runs without the lock; the exclusion constraint
+  still makes overlaps impossible. The lock only stops same-room requests from different
+  API instances from colliding inside Postgres.
+
 ## Conventions
 
 - `synchronize` is permanently `false`. Every schema change is a migration:

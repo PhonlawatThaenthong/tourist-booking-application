@@ -54,6 +54,11 @@ dependencies:
   shared_preferences: ^2.3.2
   # Pick images from the device gallery/camera or computer file browser
   image_picker: ^1.1.2
+  # Embeds the resort's Google Maps location (Profile > Hotel location)
+  webview_flutter: ^4.10.0
+  webview_flutter_web: ^0.2.3+4
+  sentry_flutter: ^9.30.0
+  firebase_core: ^4.15.0
 
 dev_dependencies:
   flutter_test:
@@ -65,6 +70,53 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # Uploads the Dart obfuscation map and split debug info to Sentry. Without
+  # it, a release APK built with --obfuscate reports crashes as meaningless
+  # symbol soup. Run `dart run sentry_dart_plugin` immediately after the
+  # build, in the same job — see the `sentry:` block below.
+  sentry_dart_plugin: ^3.2.1
+  patrol: ^4.10.0
+  integration_test:
+    sdk: flutter
+
+# Config for sentry_dart_plugin (see dev_dependencies above).
+# The auth token is deliberately absent: the plugin reads SENTRY_AUTH_TOKEN
+# from the environment, and unlike the DSN that token DOES grant write access
+# to the project — it must never be committed or compiled into the app.
+sentry:
+  org: tourist-booking-app
+  project: mobile-app
+  upload_debug_symbols: true
+  upload_sources: true
+  # Must match --split-debug-info in the build command. Left unset the plugin
+  # scans the whole project directory ('.') instead.
+  symbols_path: build/debug-info
+  # A FILE, not a directory, and it has no default: without it the plugin logs
+  # a warning and skips the obfuscation map entirely — which is the one
+  # artifact that turns obfuscated Dart frames back into readable names.
+  # Must match --save-obfuscation-map in the build command.
+  dart_symbol_map_path: build/app/obfuscation.map.json
+  # Web-only, and CI builds an APK. Leaving it on makes the plugin look for a
+  # build/web that was never produced.
+  upload_source_maps: false
+  # Block until Sentry has processed the upload, so a rejected artifact fails
+  # the CI step instead of passing quietly.
+  wait_for_processing: true
+  # Default is 'auto', which runs `sentry-cli releases set-commits --auto` and
+  # needs a GitHub repo integration configured in Sentry. Turn this on once
+  # that exists — it is what makes suspect commits work.
+  commits: 'false'
+
+# Config for the Patrol CLI (patrol test / patrol doctor / patrol devices).
+# package_name / bundle_id must match applicationId (android/app/build.gradle.kts)
+# and PRODUCT_BUNDLE_IDENTIFIER (ios/Runner.xcodeproj) respectively.
+patrol:
+  app_name: hotel_booking
+  android:
+    package_name: com.example.hotel_booking
+  ios:
+    bundle_id: com.example.hotelBooking
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

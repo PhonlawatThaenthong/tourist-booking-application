@@ -54,10 +54,28 @@ class ApiBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<Booking> cancelBooking(String id) async {
+    final data = await _api.post('/api/bookings/$id/cancel');
+    return bookingFromJson(data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Booking> checkIn(String id) async {
+    final data = await _api.post('/api/staff/bookings/$id/check-in');
+    return bookingFromJson(data as Map<String, dynamic>);
+  }
+
+  @override
+  Future<Booking> checkOut(String id) async {
+    final data = await _api.post('/api/staff/bookings/$id/check-out');
+    return bookingFromJson(data as Map<String, dynamic>);
+  }
+
+  @override
   Future<Booking> updateStatus(String id, BookingStatus status) async {
     final data = await _api.patch(
       '/api/staff/bookings/$id',
-      body: {'status': status.name},
+      body: {'status': status.wireName},
     );
     return bookingFromJson(data as Map<String, dynamic>);
   }
@@ -87,7 +105,7 @@ Booking bookingFromJson(Map<String, dynamic> json) {
     guests: (json['guests'] as num).toInt(),
     totalPrice: (json['totalPrice'] as num).toDouble(),
     status: BookingStatus.values.firstWhere(
-      (s) => s.name == json['status'],
+      (s) => s.wireName == json['status'],
       orElse: () => BookingStatus.pending,
     ),
     paymentStatus: PaymentStatus.values.firstWhere(

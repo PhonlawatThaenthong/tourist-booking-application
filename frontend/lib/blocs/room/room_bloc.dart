@@ -22,14 +22,6 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
 
   List<Room> get allRooms => List.unmodifiable(state.rooms);
 
-  /// Lowest and highest nightly prices, used to seed the price slider.
-  double get minRoomPrice => state.rooms.isEmpty
-      ? 0
-      : state.rooms.map((r) => r.pricePerNight).reduce((a, b) => a < b ? a : b);
-  double get maxRoomPrice => state.rooms.isEmpty
-      ? 10000
-      : state.rooms.map((r) => r.pricePerNight).reduce((a, b) => a > b ? a : b);
-
   Room? byId(String id) {
     final match = state.rooms.where((r) => r.id == id);
     return match.isEmpty ? null : match.first;
@@ -68,11 +60,6 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
       if (filter.types.isNotEmpty && !filter.types.contains(room.type)) {
         return false;
       }
-      if (room.pricePerNight < filter.minPrice ||
-          room.pricePerNight > filter.maxPrice) {
-        return false;
-      }
-      if (room.capacity < filter.guests) return false;
       if (filter.query.isNotEmpty &&
           !room.name.toLowerCase().contains(filter.query.toLowerCase())) {
         return false;
@@ -115,7 +102,10 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
         imageUrls: event.imageUrls,
         amenities: event.amenities,
       );
+      // Shown straight away; photos follow as each upload lands, so a failed
+      // upload still leaves the room itself saved.
       emit(state.copyWith(rooms: [...state.rooms, room]));
+      await _uploadPhotos(room.id, event.newPhotos, emit);
     } on RepositoryException catch (e) {
       emit(state.copyWith(errorMessage: e.message));
     }
@@ -128,8 +118,27 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
     try {
       final updated = await _repository.updateRoom(event.room);
       _replace(updated, emit);
+      await _uploadPhotos(updated.id, event.newPhotos, emit);
     } on RepositoryException catch (e) {
       emit(state.copyWith(errorMessage: e.message));
+    }
+  }
+
+  /// One at a time, in the order they were picked, so they keep that order.
+  Future<void> _uploadPhotos(
+    String roomId,
+    List<PendingPhoto> photos,
+    Emitter<RoomState> emit,
+  ) async {
+    for (final photo in photos) {
+      _replace(
+        await _repository.addRoomPhoto(
+          roomId,
+          bytes: photo.bytes,
+          filename: photo.filename,
+        ),
+        emit,
+      );
     }
   }
 

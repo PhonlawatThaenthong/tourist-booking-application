@@ -1,7 +1,11 @@
 import {
-  Body, Controller, Delete, HttpCode, Param, ParseUUIDPipe, Patch, Post, UseGuards,
+  Body, Controller, Delete, HttpCode, Param, ParseUUIDPipe, Patch, Post, UploadedFile,
+  UseGuards, UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { RestaurantsService } from './restaurants.service';
+import { toRestaurantResponse } from './restaurant.response';
+import { UploadedImage } from '../../common/uploaded-image';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -17,13 +21,24 @@ export class StaffRestaurantsController {
   constructor(private readonly restaurants: RestaurantsService) {}
 
   @Post()
-  create(@Body() dto: CreateRestaurantDto) {
-    return this.restaurants.create(dto);
+  async create(@Body() dto: CreateRestaurantDto) {
+    return toRestaurantResponse(await this.restaurants.create(dto));
   }
 
   @Patch(':id')
-  update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateRestaurantDto) {
-    return this.restaurants.update(id, dto);
+  async update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateRestaurantDto) {
+    return toRestaurantResponse(await this.restaurants.update(id, dto));
+  }
+
+  /** Upload or replace the photo (multipart/form-data, field `image`). */
+  @Post(':id/image')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() image: UploadedImage | undefined,
+  ) {
+    return toRestaurantResponse(await this.restaurants.setImage(id, image));
   }
 
   @Delete(':id')

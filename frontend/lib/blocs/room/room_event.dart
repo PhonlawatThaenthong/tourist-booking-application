@@ -1,4 +1,14 @@
+import 'dart:typed_data';
+
 import '../../models/room.dart';
+
+/// A photo picked in the room form, not yet on the server. Held as bytes
+/// rather than a device path: a path means nothing on any other device.
+class PendingPhoto {
+  final Uint8List bytes;
+  final String filename;
+  const PendingPhoto(this.bytes, this.filename);
+}
 
 abstract class RoomEvent {
   const RoomEvent();
@@ -17,6 +27,9 @@ class RoomAddRequested extends RoomEvent {
   final List<String> imageUrls;
   final List<String> amenities;
 
+  /// Uploaded once the room exists, and appended after [imageUrls].
+  final List<PendingPhoto> newPhotos;
+
   const RoomAddRequested({
     required this.name,
     required this.type,
@@ -25,12 +38,17 @@ class RoomAddRequested extends RoomEvent {
     required this.description,
     required this.imageUrls,
     required this.amenities,
+    this.newPhotos = const [],
   });
 }
 
 class RoomUpdateRequested extends RoomEvent {
   final Room room;
-  const RoomUpdateRequested(this.room);
+
+  /// Uploaded after the update, and appended to the room's photos.
+  final List<PendingPhoto> newPhotos;
+
+  const RoomUpdateRequested(this.room, {this.newPhotos = const []});
 }
 
 class RoomUpdatePriceRequested extends RoomEvent {

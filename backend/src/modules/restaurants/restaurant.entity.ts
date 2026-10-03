@@ -27,8 +27,13 @@ export class Restaurant {
   @Column({ type: 'text' })
   description!: string;
 
-  @Column({ name: 'image_url', length: 500 })
+  /** Fallback when no photo has been uploaded: an external link, or empty. */
+  @Column({ name: 'image_url', length: 500, default: '' })
   imageUrl!: string;
+
+  /** Uploaded photo, relative to UPLOAD_DIR (like `payments.slip_path`). */
+  @Column({ name: 'image_path', type: 'varchar', length: 255, nullable: true })
+  imagePath!: string | null;
 
   @Column({ length: 255 })
   address!: string;

@@ -60,8 +60,8 @@ class BookingConfirmationScreen extends StatelessWidget {
               child: Column(
                 children: [
                   _row('Room', booking.roomName),
-                  _row('Check-in', Format.date(booking.checkIn)),
-                  _row('Check-out', Format.date(booking.checkOut)),
+                  _row('Check-in', Format.checkIn(booking.checkIn)),
+                  _row('Check-out', Format.checkOut(booking.checkOut)),
                   _row('Guests', '${booking.guests}'),
                   _row('Nights', '${booking.nights}'),
                   const Divider(),

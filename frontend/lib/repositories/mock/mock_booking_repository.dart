@@ -55,6 +55,18 @@ class MockBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<Booking> cancelBooking(String id) =>
+      updateStatus(id, BookingStatus.cancelled);
+
+  @override
+  Future<Booking> checkIn(String id) =>
+      updateStatus(id, BookingStatus.checkedIn);
+
+  @override
+  Future<Booking> checkOut(String id) =>
+      updateStatus(id, BookingStatus.checkedOut);
+
+  @override
   Future<Booking> updateStatus(String id, BookingStatus status) async {
     final booking = _bookings[_indexOf(id)];
     booking.status = status;

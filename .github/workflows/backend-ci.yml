@@ -1,0 +1,98 @@
+name: Backend CI
+
+# CI รันเมื่อมีการแก้โค้ดฝั่ง backend เท่านั้น — แก้แต่ Flutter ไม่ต้องจุด Postgres ขึ้นมาเปล่า ๆ
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+
+# push เข้า branch ที่เปิด PR ค้างไว้จะทริกเกอร์สองรอบ — ยกเลิกรอบเก่าทิ้ง
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    # e2e spec ต่อ Postgres จริง (EXC_bookings_no_overlap ทดสอบด้วย mock ไม่ได้)
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: poonsuk
+          POSTGRES_PASSWORD: poonsuk_dev_password
+          POSTGRES_DB: poonsuk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U poonsuk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      # runner ต่อ service container ผ่าน localhost:5432 (ไม่ใช่ 5433 แบบเครื่อง dev)
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_USER: poonsuk
+      DB_PASSWORD: poonsuk_dev_password
+      DB_NAME: poonsuk
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: ci-only-not-a-real-secret
+      JWT_ACCESS_TTL: 15m
+      JWT_REFRESH_TTL_DAYS: 30
+      # SMTP_HOST ว่าง = MailService log รหัสลง console แทนการส่งจริง
+      SMTP_HOST: ''
+      RESET_TOKEN_TTL_MINUTES: 15
+      UPLOAD_DIR: ./uploads
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # ยังไม่มีไฟล์ .spec.ts ใน src/ — ปล่อยให้ผ่านไปก่อน แต่ step จะเริ่มเช็คให้เองทันทีที่มี unit test ตัวแรก
+      - name: Unit tests
+        run: npm test -- --passWithNoTests
+
+      # synchronize: false ถาวร → schema ต้องมาจาก migration เท่านั้น
+      - name: Run migrations
+        run: npm run migration:run
+
+      - name: E2E tests
+        run: |
+          mkdir -p uploads/slips
+          npm run test:e2e

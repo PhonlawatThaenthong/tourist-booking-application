@@ -11,34 +11,46 @@ import '../config.dart';
 class MapsService {
   MapsService._();
 
-  /// Opens a Google Maps pin for the given coordinates.
+  /// Opens a Google Maps pin. Prefers [address] (lets Google geocode the
+  /// exact spot) and falls back to the raw coordinates when no address is
+  /// given.
   static Future<void> openLocation({
     required double lat,
     required double lng,
     String? label,
+    String? address,
   }) async {
-    final query = label != null ? Uri.encodeComponent(label) : '$lat,$lng';
+    final query = Uri.encodeComponent(address ?? label ?? '$lat,$lng');
     final uri = Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$lat,$lng&query_place_id=$query',
+      'https://www.google.com/maps/search/?api=1&query=$query',
     );
     await _launch(uri);
   }
 
   /// Opens turn-by-turn directions from the user's current location to the
-  /// destination.
+  /// destination. Prefers [destAddress] over raw coordinates for the same
+  /// reason as [openLocation].
   static Future<void> openDirections({
     required double destLat,
     required double destLng,
+    String? destAddress,
   }) async {
+    final destination = Uri.encodeComponent(destAddress ?? '$destLat,$destLng');
     final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$destLat,$destLng&travelmode=driving',
+      'https://www.google.com/maps/dir/?api=1&destination=$destination&travelmode=driving',
     );
     await _launch(uri);
   }
 
   /// Directions to the hotel itself (used on the customer home / location page).
-  static Future<void> directionsToHotel() =>
-      openDirections(destLat: AppConfig.hotelLat, destLng: AppConfig.hotelLng);
+  /// Routes by the exact business name, not the postal address, so Google
+  /// Maps opens the actual "Poonsuk Resort@Sadao" place page (reviews,
+  /// photos, availability) instead of a bare address pin.
+  static Future<void> directionsToHotel() => openDirections(
+        destLat: AppConfig.hotelLat,
+        destLng: AppConfig.hotelLng,
+        destAddress: AppConfig.hotelPlaceName,
+      );
 
   static Future<void> _launch(Uri uri) async {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
