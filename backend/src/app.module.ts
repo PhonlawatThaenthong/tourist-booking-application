@@ -14,6 +14,7 @@ import { RestaurantsModule } from './modules/restaurants/restaurants.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RedisCacheModule } from './modules/cache/redis-cache.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { buildDataSourceOptions } from './config/data-source';
 import { getRedisConnection } from './config/redis.config';
 
@@ -40,6 +41,7 @@ import { getRedisConnection } from './config/redis.config';
     RestaurantsModule,
     PaymentsModule,
     NotificationsModule,
+    ReportsModule,
   ],
   providers: [
     // Reports unhandled exceptions, then rethrows so Nest's own error
