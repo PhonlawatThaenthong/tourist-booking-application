@@ -22,7 +22,11 @@ class RestaurantPhoto extends StatelessWidget {
           url: restaurant.imageUrl,
           errorBuilder: (_) => Container(
             color: Colors.grey.shade200,
-            child: Icon(Icons.restaurant, size: 48, color: Colors.grey.shade500),
+            child: Icon(
+              Icons.restaurant,
+              size: 48,
+              color: Colors.grey.shade500,
+            ),
           ),
         ),
       ),

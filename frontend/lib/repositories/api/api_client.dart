@@ -21,9 +21,9 @@ import '../repository_exception.dart';
 ///    refresh would sign the user out).
 class ApiClient {
   ApiClient({http.Client? httpClient, String? baseUrl})
-      : _http = httpClient ?? http.Client(),
-        // A trailing slash would produce '//api/...' once a path is appended.
-        _baseUrl = _stripTrailingSlash(baseUrl ?? AppConfig.apiBaseUrl);
+    : _http = httpClient ?? http.Client(),
+      // A trailing slash would produce '//api/...' once a path is appended.
+      _baseUrl = _stripTrailingSlash(baseUrl ?? AppConfig.apiBaseUrl);
 
   static String _stripTrailingSlash(String url) =>
       url.endsWith('/') ? url.substring(0, url.length - 1) : url;
@@ -53,8 +53,11 @@ class ApiClient {
 
   // ---- Requests ---------------------------------------------------------
 
-  Future<dynamic> get(String path, {Map<String, String>? query, bool auth = true}) =>
-      _send('GET', path, query: query, auth: auth);
+  Future<dynamic> get(
+    String path, {
+    Map<String, String>? query,
+    bool auth = true,
+  }) => _send('GET', path, query: query, auth: auth);
 
   Future<dynamic> post(String path, {Object? body, bool auth = true}) =>
       _send('POST', path, body: body, auth: auth);
@@ -97,12 +100,14 @@ class ApiClient {
       if (auth && _accessToken != null) {
         request.headers['Authorization'] = 'Bearer $_accessToken';
       }
-      request.files.add(http.MultipartFile.fromBytes(
-        field,
-        bytes,
-        filename: filename,
-        contentType: _mediaTypeFor(filename),
-      ));
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          field,
+          bytes,
+          filename: filename,
+          contentType: _mediaTypeFor(filename),
+        ),
+      );
       return http.Response.fromStream(await _http.send(request));
     }
 
@@ -173,8 +178,9 @@ class ApiClient {
     bool auth = true,
     bool isRetry = false,
   }) async {
-    final uri = Uri.parse('$_baseUrl$path')
-        .replace(queryParameters: (query == null || query.isEmpty) ? null : query);
+    final uri = Uri.parse(
+      '$_baseUrl$path',
+    ).replace(queryParameters: (query == null || query.isEmpty) ? null : query);
 
     final request = http.Request(method, uri)
       ..headers['Accept'] = 'application/json';
@@ -197,10 +203,20 @@ class ApiClient {
 
     // Access tokens live 15 minutes; one silent rotation keeps the user from
     // being bounced to the login screen mid-session.
-    if (response.statusCode == 401 && auth && !isRetry && _refreshToken != null) {
+    if (response.statusCode == 401 &&
+        auth &&
+        !isRetry &&
+        _refreshToken != null) {
       final refreshed = await _refreshTokens();
       if (refreshed) {
-        return _send(method, path, body: body, query: query, auth: auth, isRetry: true);
+        return _send(
+          method,
+          path,
+          body: body,
+          query: query,
+          auth: auth,
+          isRetry: true,
+        );
       }
     }
 

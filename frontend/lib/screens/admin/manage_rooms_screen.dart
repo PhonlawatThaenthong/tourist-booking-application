@@ -8,6 +8,7 @@ import '../../blocs/room/room_bloc.dart';
 import '../../blocs/room/room_event.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/app_image.dart';
+import '../../widgets/pull_to_refresh.dart';
 import 'room_form_screen.dart';
 
 /// Room inventory management: add/remove rooms, update price, toggle the
@@ -24,17 +25,22 @@ class ManageRoomsScreen extends StatelessWidget {
         context.watch<AuthBloc>().state.currentUser?.role == UserRole.admin;
 
     return Scaffold(
-      body: ListView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-        itemCount: rooms.length,
-        itemBuilder: (_, i) =>
-            _RoomAdminCard(room: rooms[i], isAdmin: isAdmin),
+      body: RefreshIndicator(
+        onRefresh: () =>
+            reloadBloc(context.read<RoomBloc>(), const RoomStarted()),
+        child: ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+          itemCount: rooms.length,
+          itemBuilder: (_, i) =>
+              _RoomAdminCard(room: rooms[i], isAdmin: isAdmin),
+        ),
       ),
       floatingActionButton: isAdmin
           ? FloatingActionButton.extended(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const RoomFormScreen()),
-              ),
+              onPressed: () => Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const RoomFormScreen())),
               icon: const Icon(Icons.add),
               label: const Text('Add room'),
             )
@@ -49,8 +55,9 @@ class _RoomAdminCard extends StatelessWidget {
   const _RoomAdminCard({required this.room, required this.isAdmin});
 
   Future<void> _editPrice(BuildContext context) async {
-    final ctrl =
-        TextEditingController(text: room.pricePerNight.toStringAsFixed(0));
+    final ctrl = TextEditingController(
+      text: room.pricePerNight.toStringAsFixed(0),
+    );
     final result = await showDialog<double>(
       context: context,
       builder: (_) => AlertDialog(
@@ -59,15 +66,17 @@ class _RoomAdminCard extends StatelessWidget {
           controller: ctrl,
           keyboardType: TextInputType.number,
           decoration: const InputDecoration(
-              labelText: 'Price per night (฿)', prefixText: '฿ '),
+            labelText: 'Price per night (฿)',
+            prefixText: '฿ ',
+          ),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
-            onPressed: () =>
-                Navigator.pop(context, double.tryParse(ctrl.text)),
+            onPressed: () => Navigator.pop(context, double.tryParse(ctrl.text)),
             child: const Text('Save'),
           ),
         ],
@@ -86,8 +95,9 @@ class _RoomAdminCard extends StatelessWidget {
         content: Text('Remove "${room.name}" from inventory?'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
@@ -119,10 +129,7 @@ class _RoomAdminCard extends StatelessWidget {
                   child: SizedBox(
                     width: 72,
                     height: 72,
-                    child: AppImage(
-                      url: room.primaryImage,
-                      fit: BoxFit.cover,
-                    ),
+                    child: AppImage(url: room.primaryImage, fit: BoxFit.cover),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -130,15 +137,24 @@ class _RoomAdminCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(room.name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 15)),
-                      Text('${room.type.label} · ${room.capacity} guests',
-                          style: TextStyle(color: Colors.grey.shade600)),
-                      Text('${Format.money(room.pricePerNight)} / night',
-                          style: const TextStyle(
-                              color: Color(0xFF00796B),
-                              fontWeight: FontWeight.bold)),
+                      Text(
+                        room.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
+                      ),
+                      Text(
+                        '${room.type.label} · ${room.capacity} guests',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                      Text(
+                        '${Format.money(room.pricePerNight)} / night',
+                        style: const TextStyle(
+                          color: Color(0xFF00796B),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -159,12 +175,14 @@ class _RoomAdminCard extends StatelessWidget {
                     Switch(
                       value: maintenance,
                       onChanged: isAdmin
-                          ? (v) => provider.add(RoomSetStatusRequested(
+                          ? (v) => provider.add(
+                              RoomSetStatusRequested(
                                 room.id,
                                 v
                                     ? RoomStatus.maintenance
                                     : RoomStatus.available,
-                              ))
+                              ),
+                            )
                           : null,
                     ),
                   ],
@@ -181,7 +199,8 @@ class _RoomAdminCard extends StatelessWidget {
                     icon: const Icon(Icons.edit_outlined),
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                          builder: (_) => RoomFormScreen(existing: room)),
+                        builder: (_) => RoomFormScreen(existing: room),
+                      ),
                     ),
                   ),
                   IconButton(

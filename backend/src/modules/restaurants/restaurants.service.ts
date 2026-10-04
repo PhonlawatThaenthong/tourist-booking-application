@@ -71,10 +71,16 @@ export class RestaurantsService implements OnModuleInit {
   async getImageFile(id: string): Promise<{ path: string; contentType: string }> {
     const restaurant = await this.getOrFail(id);
     if (!restaurant.imagePath) throw new NotFoundException('ร้านนี้ยังไม่มีรูป');
-    return {
-      path: join(this.uploadDir, restaurant.imagePath),
-      contentType: imageContentType(restaurant.imagePath),
-    };
+    const path = join(this.uploadDir, restaurant.imagePath);
+    // The row can outlive its file (a DB copied between machines, a lost
+    // uploads volume). Answer 404 like "no photo" instead of letting the
+    // read stream fail mid-response; the app then shows its placeholder.
+    try {
+      await fs.access(path);
+    } catch {
+      throw new NotFoundException('ไม่พบไฟล์รูปของร้านนี้บนเซิร์ฟเวอร์ กรุณาอัปโหลดใหม่');
+    }
+    return { path, contentType: imageContentType(restaurant.imagePath) };
   }
 
   /** No booking history ever references a restaurant, so this is a plain hard delete. */

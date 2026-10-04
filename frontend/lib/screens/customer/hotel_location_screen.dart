@@ -25,7 +25,8 @@ class _HotelLocationScreenState extends State<HotelLocationScreen> {
   ///
   /// The zeroed margin and `100vh` height stop the WebView's default body
   /// padding from letterboxing the map inside the 16:9 box below.
-  static final String _mapFrameHtml = '''
+  static final String _mapFrameHtml =
+      '''
 <!DOCTYPE html>
 <html>
   <head><meta name="viewport" content="width=device-width, initial-scale=1"></head>
@@ -57,7 +58,10 @@ class _HotelLocationScreenState extends State<HotelLocationScreen> {
     controller.setJavaScriptMode(JavaScriptMode.unrestricted);
     // A real https base URL keeps the frame's referrer intact; the embed is
     // rejected when it is loaded from an opaque about:blank origin.
-    controller.loadHtmlString(_mapFrameHtml, baseUrl: 'https://www.google.com/');
+    controller.loadHtmlString(
+      _mapFrameHtml,
+      baseUrl: 'https://www.google.com/',
+    );
     return controller;
   }
 
@@ -76,11 +80,12 @@ class _HotelLocationScreenState extends State<HotelLocationScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          Text(AppConfig.hotelName,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            AppConfig.hotelName,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -104,7 +109,8 @@ class _HotelLocationScreenState extends State<HotelLocationScreen> {
               address: AppConfig.hotelPlaceName,
             ),
             style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(50)),
+              minimumSize: const Size.fromHeight(50),
+            ),
             icon: const Icon(Icons.map_outlined),
             label: const Text('Open in Google Maps'),
           ),

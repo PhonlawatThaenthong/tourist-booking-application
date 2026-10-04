@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/restaurant.dart';
 import '../../blocs/restaurant/restaurant_bloc.dart';
+import '../../blocs/restaurant/restaurant_event.dart';
+import '../../widgets/pull_to_refresh.dart';
 import '../../widgets/restaurant_photo.dart';
 import 'restaurant_detail_screen.dart';
 
@@ -13,14 +15,40 @@ class RestaurantsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final restaurants = context.watch<RestaurantBloc>().nearby;
+    final bloc = context.watch<RestaurantBloc>();
+    final restaurants = bloc.nearby;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Nearby dining')),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: restaurants.length,
-        itemBuilder: (_, i) => _RestaurantCard(restaurant: restaurants[i]),
+      body: RefreshIndicator(
+        onRefresh: () => reloadBloc(bloc, const RestaurantStarted()),
+        child: restaurants.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 100),
+                  Icon(
+                    Icons.restaurant_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 12),
+                  const Center(child: Text('No restaurants yet')),
+                  Center(
+                    child: Text(
+                      'Pull down to refresh',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  ),
+                ],
+              )
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: restaurants.length,
+                itemBuilder: (_, i) =>
+                    _RestaurantCard(restaurant: restaurants[i]),
+              ),
       ),
     );
   }

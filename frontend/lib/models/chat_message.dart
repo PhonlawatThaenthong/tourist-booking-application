@@ -18,10 +18,10 @@ class ChatMessage {
   });
 
   const ChatMessage.user(String text, {bool failed = false})
-      : this(text: text, fromUser: true, failed: failed);
+    : this(text: text, fromUser: true, failed: failed);
 
   const ChatMessage.bot(String text, {bool answered = true})
-      : this(text: text, fromUser: false, answered: answered);
+    : this(text: text, fromUser: false, answered: answered);
 }
 
 /// What `POST /api/chatbot/query` returns.

@@ -45,7 +45,13 @@ class MockData {
       capacity: 2,
       description: 'Single bedroom with a king-size bed.',
       imageUrls: const ['image/P2.jpg', 'image/single_bed.jpg'],
-      amenities: const ['Wi-Fi', 'Air conditioning', 'TV', 'Mini fridge', 'Coffee'],
+      amenities: const [
+        'Wi-Fi',
+        'Air conditioning',
+        'TV',
+        'Mini fridge',
+        'Coffee',
+      ],
     ),
     Room(
       id: 'r-205',
@@ -55,12 +61,7 @@ class MockData {
       capacity: 2,
       description: 'Single bedroom with a king-size bed.',
       imageUrls: const ['image/single_bed.jpg', 'image/P2.jpg'],
-      amenities: const [
-        'Wi-Fi',
-        'Air conditioning',
-        'TV',
-        'Coffee',
-      ],
+      amenities: const ['Wi-Fi', 'Air conditioning', 'TV', 'Coffee'],
     ),
     Room(
       id: 'r-310',
@@ -115,7 +116,7 @@ class MockData {
       imageUrls: const ['image/A_set1.jpg', 'image/F2.jpg'],
       amenities: const ['Wi-Fi', 'Air conditioning', 'TV', 'Coffee'],
       status: RoomStatus.maintenance,
-    )
+    ),
   ];
 
   static List<Restaurant> restaurants() => const [

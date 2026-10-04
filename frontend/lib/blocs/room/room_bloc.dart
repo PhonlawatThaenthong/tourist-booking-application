@@ -53,7 +53,7 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   List<Room> search(
     RoomFilter filter, {
     bool Function(String roomId, DateTime checkIn, DateTime checkOut)?
-        isRoomBooked,
+    isRoomBooked,
   }) {
     return state.rooms.where((room) {
       if (room.status != RoomStatus.available) return false;
@@ -77,8 +77,11 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   Future<void> _onStarted(RoomStarted event, Emitter<RoomState> emit) async {
     try {
       final now = DateTime.now();
-      final from = DateTime(now.year, now.month, now.day)
-          .subtract(const Duration(days: 1));
+      final from = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      ).subtract(const Duration(days: 1));
       final to = from.add(const Duration(days: 400));
       final rooms = await _repository.fetchRooms();
       final ranges = await _repository.fetchBookedRanges(from: from, to: to);
@@ -170,9 +173,11 @@ class RoomBloc extends Bloc<RoomEvent, RoomState> {
   ) async {
     try {
       await _repository.deleteRoom(event.id);
-      emit(state.copyWith(
-        rooms: state.rooms.where((r) => r.id != event.id).toList(),
-      ));
+      emit(
+        state.copyWith(
+          rooms: state.rooms.where((r) => r.id != event.id).toList(),
+        ),
+      );
     } on RepositoryException catch (e) {
       emit(state.copyWith(errorMessage: e.message));
     }

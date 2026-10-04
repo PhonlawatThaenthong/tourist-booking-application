@@ -16,10 +16,12 @@ class ApiRestaurantRepository implements RestaurantRepository {
     final data =
         await _api.get('/api/restaurants', auth: false) as List<dynamic>;
     return data
-        .map((e) => restaurantFromJson(
-              e as Map<String, dynamic>,
-              resolveMediaUrl: _api.resolveMediaUrl,
-            ))
+        .map(
+          (e) => restaurantFromJson(
+            e as Map<String, dynamic>,
+            resolveMediaUrl: _api.resolveMediaUrl,
+          ),
+        )
         .toList(growable: false);
   }
 }
@@ -54,7 +56,8 @@ double _kmFromResort(double lat, double lng) {
   double rad(double deg) => deg * math.pi / 180;
   final dLat = rad(lat - AppConfig.hotelLat);
   final dLng = rad(lng - AppConfig.hotelLng);
-  final a = math.pow(math.sin(dLat / 2), 2) +
+  final a =
+      math.pow(math.sin(dLat / 2), 2) +
       math.cos(rad(AppConfig.hotelLat)) *
           math.cos(rad(lat)) *
           math.pow(math.sin(dLng / 2), 2);

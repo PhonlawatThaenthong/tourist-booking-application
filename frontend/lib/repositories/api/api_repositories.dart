@@ -1,5 +1,6 @@
 /// Barrel file for the HTTP implementations wired up in `main.dart`.
 library;
+
 export 'api_auth_repository.dart';
 export 'api_booking_repository.dart';
 export 'api_chatbot_repository.dart';

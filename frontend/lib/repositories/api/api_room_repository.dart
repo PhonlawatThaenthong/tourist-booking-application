@@ -17,20 +17,27 @@ class ApiRoomRepository implements RoomRepository {
     final path = _api.isStaffSide ? '/api/staff/rooms' : '/api/rooms';
     final data = await _api.get(path, auth: _api.isStaffSide) as List<dynamic>;
     return data
-        .map((e) => roomFromJson(e as Map<String, dynamic>, _api.resolveMediaUrl))
+        .map(
+          (e) => roomFromJson(e as Map<String, dynamic>, _api.resolveMediaUrl),
+        )
         .toList(growable: false);
   }
 
   @override
-  Future<List<BookedRange>> fetchBookedRanges({DateTime? from, DateTime? to}) async {
+  Future<List<BookedRange>> fetchBookedRanges({
+    DateTime? from,
+    DateTime? to,
+  }) async {
     final query = <String, String>{};
     if (from != null) query['from'] = ymd(from);
     if (to != null) query['to'] = ymd(to);
-    final data = await _api.get(
-      '/api/rooms/availability',
-      query: query.isEmpty ? null : query,
-      auth: false,
-    ) as List<dynamic>;
+    final data =
+        await _api.get(
+              '/api/rooms/availability',
+              query: query.isEmpty ? null : query,
+              auth: false,
+            )
+            as List<dynamic>;
     return data
         .map((e) => BookedRange.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
@@ -47,9 +54,13 @@ class ApiRoomRepository implements RoomRepository {
     final query = {'checkIn': ymd(checkIn), 'checkOut': ymd(checkOut)};
     if (guests != null) query['guests'] = guests.toString();
 
-    final data = await _api.get('/api/rooms', query: query, auth: false) as List<dynamic>;
+    final data =
+        await _api.get('/api/rooms', query: query, auth: false)
+            as List<dynamic>;
     return data
-        .map((e) => roomFromJson(e as Map<String, dynamic>, _api.resolveMediaUrl))
+        .map(
+          (e) => roomFromJson(e as Map<String, dynamic>, _api.resolveMediaUrl),
+        )
         .toList(growable: false);
   }
 
@@ -63,30 +74,36 @@ class ApiRoomRepository implements RoomRepository {
     required List<String> imageUrls,
     required List<String> amenities,
   }) async {
-    final data = await _api.post('/api/staff/rooms', body: {
-      'name': name,
-      'type': type.name,
-      'pricePerNight': pricePerNight,
-      'capacity': capacity,
-      'description': description,
-      'imageUrls': imageUrls.map(_api.toStoredMediaUrl).toList(),
-      'amenities': amenities,
-    });
+    final data = await _api.post(
+      '/api/staff/rooms',
+      body: {
+        'name': name,
+        'type': type.name,
+        'pricePerNight': pricePerNight,
+        'capacity': capacity,
+        'description': description,
+        'imageUrls': imageUrls.map(_api.toStoredMediaUrl).toList(),
+        'amenities': amenities,
+      },
+    );
     return roomFromJson(data as Map<String, dynamic>, _api.resolveMediaUrl);
   }
 
   @override
   Future<Room> updateRoom(Room room) async {
-    final data = await _api.patch('/api/staff/rooms/${room.id}', body: {
-      'name': room.name,
-      'type': room.type.name,
-      'pricePerNight': room.pricePerNight,
-      'capacity': room.capacity,
-      'description': room.description,
-      'imageUrls': room.imageUrls.map(_api.toStoredMediaUrl).toList(),
-      'amenities': room.amenities,
-      'status': room.status.name,
-    });
+    final data = await _api.patch(
+      '/api/staff/rooms/${room.id}',
+      body: {
+        'name': room.name,
+        'type': room.type.name,
+        'pricePerNight': room.pricePerNight,
+        'capacity': room.capacity,
+        'description': room.description,
+        'imageUrls': room.imageUrls.map(_api.toStoredMediaUrl).toList(),
+        'amenities': room.amenities,
+        'status': room.status.name,
+      },
+    );
     return roomFromJson(data as Map<String, dynamic>, _api.resolveMediaUrl);
   }
 

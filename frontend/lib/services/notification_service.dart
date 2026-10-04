@@ -24,8 +24,10 @@ class NotificationService {
 
     if (kDebugMode) {
       debugPrint('📧 EMAIL → $email\n$message');
-      debugPrint('📱 SMS → $phone\nBooking ${booking.id} confirmed. '
-          'Check-in ${Format.date(booking.checkIn)}.');
+      debugPrint(
+        '📱 SMS → $phone\nBooking ${booking.id} confirmed. '
+        'Check-in ${Format.date(booking.checkIn)}.',
+      );
     }
 
     return message;

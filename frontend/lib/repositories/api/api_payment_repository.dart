@@ -14,8 +14,9 @@ class ApiPaymentRepository implements PaymentRepository {
   @override
   Future<PaymentInfo> fetchInfo() async {
     // Public endpoint — no token needed, and the QR must load before login too.
-    final data = await _api.get('/api/payment/info', auth: false)
-        as Map<String, dynamic>;
+    final data =
+        await _api.get('/api/payment/info', auth: false)
+            as Map<String, dynamic>;
     final rel = (data['qrImageUrl'] as String?) ?? '';
     return PaymentInfo(
       accountName: (data['accountName'] as String?) ?? '',
@@ -37,20 +38,23 @@ class ApiPaymentRepository implements PaymentRepository {
     required List<int> bytes,
     required String filename,
   }) async {
-    final data = await _api.multipart(
-      '/api/bookings/$bookingId/pay',
-      field: 'slip',
-      bytes: bytes,
-      filename: filename,
-    ) as Map<String, dynamic>;
+    final data =
+        await _api.multipart(
+              '/api/bookings/$bookingId/pay',
+              field: 'slip',
+              bytes: bytes,
+              filename: filename,
+            )
+            as Map<String, dynamic>;
     return PaymentView.fromJson(data);
   }
 
   @override
   Future<PaymentView?> fetchForBooking(String bookingId) async {
     try {
-      final data = await _api.get('/api/bookings/$bookingId/payment')
-          as Map<String, dynamic>;
+      final data =
+          await _api.get('/api/bookings/$bookingId/payment')
+              as Map<String, dynamic>;
       return PaymentView.fromJson(data);
     } on RepositoryException catch (e) {
       // 404 = no slip uploaded yet; the caller shows the QR instead.
@@ -61,10 +65,12 @@ class ApiPaymentRepository implements PaymentRepository {
 
   @override
   Future<List<StaffPayment>> fetchPending({String? status}) async {
-    final data = await _api.get(
-      '/api/staff/payments',
-      query: status == null ? null : {'status': status},
-    ) as List<dynamic>;
+    final data =
+        await _api.get(
+              '/api/staff/payments',
+              query: status == null ? null : {'status': status},
+            )
+            as List<dynamic>;
     return data
         .map((e) => StaffPayment.fromJson(e as Map<String, dynamic>))
         .toList(growable: false);
@@ -81,10 +87,15 @@ class ApiPaymentRepository implements PaymentRepository {
     required bool approve,
     String? reason,
   }) async {
-    final data = await _api.patch('/api/staff/payments/$paymentId', body: {
-      'action': approve ? 'approve' : 'reject',
-      if (!approve && reason != null) 'reason': reason,
-    }) as Map<String, dynamic>;
+    final data =
+        await _api.patch(
+              '/api/staff/payments/$paymentId',
+              body: {
+                'action': approve ? 'approve' : 'reject',
+                if (!approve && reason != null) 'reason': reason,
+              },
+            )
+            as Map<String, dynamic>;
     return StaffPayment.fromJson(data);
   }
 }

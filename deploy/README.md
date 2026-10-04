@@ -282,6 +282,17 @@ $env:SEED_ADMIN_EMAIL="you@example.com"; $env:SEED_ADMIN_PASSWORD="<รหัส
 npm run seed:admin
 ```
 
+รูปร้านอาหารไม่ได้มากับ `seed:restaurants` (seed ใส่แค่ข้อมูลร้าน) ต้องอัปโหลดไฟล์จาก `backend/seed-photos/restaurants/` ผ่าน API ของ production อีกขั้น ไม่อย่างนั้นแอปจะแสดงแต่ไอคอนช้อนส้อมแทนรูป ไฟล์จะไปอยู่ใน volume `uploads` บน VM
+
+```powershell
+# PowerShell ที่ backend\ ไม่ต้องเปิด tunnel เพราะยิงผ่าน HTTPS
+$env:API_URL="https://api.example.com"
+$env:SEED_ADMIN_EMAIL="you@example.com"; $env:SEED_ADMIN_PASSWORD="<รหัส admin>"
+npm run upload:restaurant-photos
+```
+
+รันซ้ำได้ (แทนรูปเดิม) จากนั้นในแอปดึงหน้าจอ Dining ลงเพื่อ refresh
+
 ## 11. Flutter
 
 ```bash
