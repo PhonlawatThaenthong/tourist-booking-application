@@ -33,7 +33,9 @@ class RoomCard extends StatelessWidget {
                         child: Text(
                           room.name,
                           style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -48,11 +50,16 @@ class RoomCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.people_outline,
-                          size: 16, color: Colors.grey.shade600),
+                      Icon(
+                        Icons.people_outline,
+                        size: 16,
+                        color: Colors.grey.shade600,
+                      ),
                       const SizedBox(width: 4),
-                      Text('Up to ${room.capacity} guests',
-                          style: TextStyle(color: Colors.grey.shade600)),
+                      Text(
+                        'Up to ${room.capacity} guests',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -67,8 +74,10 @@ class RoomCard extends StatelessWidget {
                           color: Color(0xFF00796B),
                         ),
                       ),
-                      Text(' / night',
-                          style: TextStyle(color: Colors.grey.shade600)),
+                      Text(
+                        ' / night',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
                       const Spacer(),
                       const Icon(Icons.arrow_forward_ios, size: 14),
                     ],
@@ -96,9 +105,9 @@ class _RoomImage extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        color: Colors.grey.shade200,
-        child: const Center(
-          child: Icon(Icons.king_bed_outlined, size: 48, color: Colors.grey),
-        ),
-      );
+    color: Colors.grey.shade200,
+    child: const Center(
+      child: Icon(Icons.king_bed_outlined, size: 48, color: Colors.grey),
+    ),
+  );
 }

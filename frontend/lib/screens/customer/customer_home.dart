@@ -53,20 +53,22 @@ class _CustomerHomeState extends State<CustomerHome> {
             selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
             destinations: const [
+              NavigationDestination(icon: Icon(Icons.search), label: 'Search'),
               NavigationDestination(
-                  icon: Icon(Icons.search), label: 'Search'),
+                icon: Icon(Icons.event_note_outlined),
+                selectedIcon: Icon(Icons.event_note),
+                label: 'Bookings',
+              ),
               NavigationDestination(
-                  icon: Icon(Icons.event_note_outlined),
-                  selectedIcon: Icon(Icons.event_note),
-                  label: 'Bookings'),
+                icon: Icon(Icons.restaurant_outlined),
+                selectedIcon: Icon(Icons.restaurant),
+                label: 'Dining',
+              ),
               NavigationDestination(
-                  icon: Icon(Icons.restaurant_outlined),
-                  selectedIcon: Icon(Icons.restaurant),
-                  label: 'Dining'),
-              NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person),
-                  label: 'Profile'),
+                icon: Icon(Icons.person_outline),
+                selectedIcon: Icon(Icons.person),
+                label: 'Profile',
+              ),
             ],
           ),
         ),

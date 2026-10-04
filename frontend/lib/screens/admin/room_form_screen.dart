@@ -38,8 +38,9 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
     super.initState();
     final r = widget.existing;
     _name = TextEditingController(text: r?.name ?? '');
-    _price =
-        TextEditingController(text: r?.pricePerNight.toStringAsFixed(0) ?? '');
+    _price = TextEditingController(
+      text: r?.pricePerNight.toStringAsFixed(0) ?? '',
+    );
     _capacity = TextEditingController(text: r?.capacity.toString() ?? '2');
     _description = TextEditingController(text: r?.description ?? '');
     _amenities = TextEditingController(text: r?.amenities.join(', ') ?? '');
@@ -78,7 +79,10 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
       ),
     );
     if (source == null) return;
-    final picked = await ImagePicker().pickImage(source: source, imageQuality: 85);
+    final picked = await ImagePicker().pickImage(
+      source: source,
+      imageQuality: 85,
+    );
     if (picked == null) return;
     // Read now: the picker's path is only valid on this device, and on web
     // it is a blob URL that expires with the page.
@@ -109,16 +113,18 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
         ..amenities = amenities;
       provider.add(RoomUpdateRequested(r, newPhotos: _newPhotos));
     } else {
-      provider.add(RoomAddRequested(
-        name: _name.text.trim(),
-        type: _type,
-        pricePerNight: double.parse(_price.text),
-        capacity: int.parse(_capacity.text),
-        description: _description.text.trim(),
-        imageUrls: imageUrls,
-        amenities: amenities,
-        newPhotos: _newPhotos,
-      ));
+      provider.add(
+        RoomAddRequested(
+          name: _name.text.trim(),
+          type: _type,
+          pricePerNight: double.parse(_price.text),
+          capacity: int.parse(_capacity.text),
+          description: _description.text.trim(),
+          imageUrls: imageUrls,
+          amenities: amenities,
+          newPhotos: _newPhotos,
+        ),
+      );
     }
     Navigator.of(context).pop();
   }
@@ -169,8 +175,7 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
               initialValue: _type,
               decoration: const InputDecoration(labelText: 'Room type'),
               items: RoomType.values
-                  .map((t) =>
-                      DropdownMenuItem(value: t, child: Text(t.label)))
+                  .map((t) => DropdownMenuItem(value: t, child: Text(t.label)))
                   .toList(),
               onChanged: (v) => setState(() => _type = v ?? _type),
             ),
@@ -182,7 +187,9 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
                     controller: _price,
                     keyboardType: TextInputType.number,
                     decoration: const InputDecoration(
-                        labelText: 'Price/night', prefixText: '฿ '),
+                      labelText: 'Price/night',
+                      prefixText: '฿ ',
+                    ),
                     validator: (v) => double.tryParse(v ?? '') == null
                         ? 'Enter a number'
                         : null,
@@ -193,11 +200,9 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
                   child: TextFormField(
                     controller: _capacity,
                     keyboardType: TextInputType.number,
-                    decoration:
-                        const InputDecoration(labelText: 'Capacity'),
-                    validator: (v) => int.tryParse(v ?? '') == null
-                        ? 'Enter a number'
-                        : null,
+                    decoration: const InputDecoration(labelText: 'Capacity'),
+                    validator: (v) =>
+                        int.tryParse(v ?? '') == null ? 'Enter a number' : null,
                   ),
                 ),
               ],
@@ -236,8 +241,10 @@ class _RoomFormScreenState extends State<RoomFormScreen> {
                         border: Border.all(color: Colors.grey.shade400),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.add_a_photo_outlined,
-                          color: Colors.grey),
+                      child: const Icon(
+                        Icons.add_a_photo_outlined,
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
                 ],

@@ -395,24 +395,23 @@ export class BookingsService {
   }
 
   /** A customer cancelling their own booking. */
-  async cancel(id: string, actorId: string, actorRole: UserRole): Promise<BookingResponse> {
+  async cancel(id: string, _actorId: string, actorRole: UserRole): Promise<BookingResponse> {
+    // Staff only. A guest asks the front desk (the app shows the contact
+    // details), so refunds and the freed room are always handled by a person.
+    // Checked before the lookup, so a customer learns nothing about whether
+    // some other booking id exists.
+    if (actorRole === UserRole.CUSTOMER) {
+      throw new ForbiddenException(
+        'ลูกค้ายกเลิกการจองเองไม่ได้ กรุณาติดต่อเจ้าหน้าที่ของรีสอร์ตเพื่อยกเลิกการจอง',
+      );
+    }
     const booking = await this.repo.findOne({ where: { id } });
     if (!booking) throw new NotFoundException('ไม่พบการจอง');
-    if (actorRole === UserRole.CUSTOMER && booking.customerId !== actorId) {
-      throw new ForbiddenException('ไม่มีสิทธิ์เข้าถึงการจองนี้');
-    }
     if (booking.status === BookingStatus.CANCELLED) {
       throw new ConflictException('การจองนี้ถูกยกเลิกไปแล้ว');
     }
     if (booking.status === BookingStatus.CHECKED_OUT) {
       throw new ConflictException('การเข้าพักนี้เช็คเอาท์ไปแล้ว ยกเลิกไม่ได้');
-    }
-    // A paid booking is refunded below, so a customer must not be able to
-    // cancel once the stay has started — otherwise they could check out and
-    // then claim their money back. Staff keep the power, to settle no-shows
-    // and disputes by hand.
-    if (actorRole === UserRole.CUSTOMER && booking.checkIn <= todayAtResort()) {
-      throw new BadRequestException('ยกเลิกได้ก่อนวันเช็คอินเท่านั้น');
     }
 
     const wasPaid = booking.paymentStatus === PaymentStatus.PAID;

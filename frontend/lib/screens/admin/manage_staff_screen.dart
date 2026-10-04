@@ -5,6 +5,7 @@ import '../../models/user.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
+import '../../widgets/pull_to_refresh.dart';
 
 /// View staff/admin accounts. Everyone on the staff side can view this list;
 /// only admins can create or delete accounts.
@@ -36,42 +37,51 @@ class _ManageStaffScreenState extends State<ManageStaffScreen> {
         );
       },
       child: Scaffold(
-        body: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: staff.length,
-          itemBuilder: (_, i) {
-            final u = staff[i];
-            return Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: u.role == UserRole.admin
-                      ? Colors.deepPurple.shade100
-                      : Colors.blue.shade100,
-                  child: Icon(
-                    u.role == UserRole.admin
-                        ? Icons.admin_panel_settings
-                        : Icons.badge,
+        body: RefreshIndicator(
+          onRefresh: () => reloadBloc(
+            context.read<AuthBloc>(),
+            const AuthUsersRefreshRequested(),
+          ),
+          child: ListView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            itemCount: staff.length,
+            itemBuilder: (_, i) {
+              final u = staff[i];
+              return Card(
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: u.role == UserRole.admin
+                        ? Colors.deepPurple.shade100
+                        : Colors.blue.shade100,
+                    child: Icon(
+                      u.role == UserRole.admin
+                          ? Icons.admin_panel_settings
+                          : Icons.badge,
+                    ),
+                  ),
+                  title: Text(u.name),
+                  subtitle: Text('${u.email}\n${u.phone}'),
+                  isThreeLine: true,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Chip(label: Text(u.role.label)),
+                      if (isAdmin)
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            color: Colors.red,
+                          ),
+                          tooltip: 'Delete account',
+                          onPressed: () => _confirmDelete(context, u),
+                        ),
+                    ],
                   ),
                 ),
-                title: Text(u.name),
-                subtitle: Text('${u.email}\n${u.phone}'),
-                isThreeLine: true,
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Chip(label: Text(u.role.label)),
-                    if (isAdmin)
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline,
-                            color: Colors.red),
-                        tooltip: 'Delete account',
-                        onPressed: () => _confirmDelete(context, u),
-                      ),
-                  ],
-                ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
         floatingActionButton: isAdmin
             ? FloatingActionButton.extended(
@@ -145,13 +155,15 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    context.read<AuthBloc>().add(AuthStaffCreateRequested(
-          name: _name.text,
-          email: _email.text,
-          phone: _phone.text,
-          password: _password.text,
-          role: _role,
-        ));
+    context.read<AuthBloc>().add(
+      AuthStaffCreateRequested(
+        name: _name.text,
+        email: _email.text,
+        phone: _phone.text,
+        password: _password.text,
+        role: _role,
+      ),
+    );
   }
 
   @override
@@ -168,91 +180,96 @@ class _AddStaffSheetState extends State<_AddStaffSheet> {
         );
       },
       child: Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'New staff account',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Full name'),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Required' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'Email'),
-              validator: (v) =>
-                  (v == null || !v.contains('@')) ? 'Invalid email' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _phone,
-              keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: 'Phone'),
-              validator: (v) =>
-                  (v == null || v.trim().length < 8) ? 'Invalid phone' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _password,
-              obscureText: _obscurePassword,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined),
-                  tooltip:
-                      _obscurePassword ? 'Show password' : 'Hide password',
-                  onPressed: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                ),
-              ),
-              validator: (v) =>
-                  (v == null || v.length < 6) ? 'Min 6 characters' : null,
-            ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<UserRole>(
-              initialValue: _role,
-              decoration: const InputDecoration(labelText: 'Permission level'),
-              items: const [
-                DropdownMenuItem(value: UserRole.staff, child: Text('Staff')),
-                DropdownMenuItem(
-                  value: UserRole.admin,
-                  child: Text('Administrator'),
-                ),
-              ],
-              onChanged: (v) => setState(() => _role = v ?? UserRole.staff),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: const TextStyle(color: Colors.red)),
-            ],
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: _submit,
-              child: const Text('Create account'),
-            ),
-          ],
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         ),
-      ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'New staff account',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _name,
+                decoration: const InputDecoration(labelText: 'Full name'),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Required' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email'),
+                validator: (v) =>
+                    (v == null || !v.contains('@')) ? 'Invalid email' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _phone,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(labelText: 'Phone'),
+                validator: (v) =>
+                    (v == null || v.trim().length < 8) ? 'Invalid phone' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _password,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                    tooltip: _obscurePassword
+                        ? 'Show password'
+                        : 'Hide password',
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
+                validator: (v) =>
+                    (v == null || v.length < 6) ? 'Min 6 characters' : null,
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<UserRole>(
+                initialValue: _role,
+                decoration: const InputDecoration(
+                  labelText: 'Permission level',
+                ),
+                items: const [
+                  DropdownMenuItem(value: UserRole.staff, child: Text('Staff')),
+                  DropdownMenuItem(
+                    value: UserRole.admin,
+                    child: Text('Administrator'),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _role = v ?? UserRole.staff),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Text(_error!, style: const TextStyle(color: Colors.red)),
+              ],
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: _submit,
+                child: const Text('Create account'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

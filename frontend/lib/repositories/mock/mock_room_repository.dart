@@ -20,8 +20,10 @@ class MockRoomRepository implements RoomRepository {
   Future<List<Room>> fetchRooms() async => List.unmodifiable(_rooms);
 
   @override
-  Future<List<BookedRange>> fetchBookedRanges({DateTime? from, DateTime? to}) async =>
-      const [];
+  Future<List<BookedRange>> fetchBookedRanges({
+    DateTime? from,
+    DateTime? to,
+  }) async => const [];
 
   @override
   Future<Room> createRoom({
@@ -75,8 +77,7 @@ class MockRoomRepository implements RoomRepository {
     String roomId, {
     required Uint8List bytes,
     required String filename,
-  }) async =>
-      _rooms[_indexOf(roomId)];
+  }) async => _rooms[_indexOf(roomId)];
 
   @override
   Future<void> deleteRoom(String id) async {

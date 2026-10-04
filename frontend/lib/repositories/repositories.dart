@@ -1,5 +1,6 @@
 /// Barrel file — import this to get every repository contract at once.
 library;
+
 export 'auth_repository.dart';
 export 'booking_repository.dart';
 export 'chatbot_repository.dart';

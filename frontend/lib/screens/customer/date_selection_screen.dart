@@ -18,7 +18,15 @@ class DateSelectionScreen extends StatefulWidget {
 }
 
 class _DateSelectionScreenState extends State<DateSelectionScreen> {
-  static const _weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _weekdayLabels = [
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ];
 
   late DateTime _month;
   late DateTime _today;
@@ -36,10 +44,7 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
     _checkOut = widget.initialRange != null
         ? _dateOnly(widget.initialRange!.end)
         : null;
-    _month = DateTime(
-      (_checkIn ?? now).year,
-      (_checkIn ?? now).month,
-    );
+    _month = DateTime((_checkIn ?? now).year, (_checkIn ?? now).month);
   }
 
   DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
@@ -101,13 +106,14 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
                     child: Text(
                       Format.date(day),
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                   Text(
                     '${bookedRooms.length}/${rooms.length} room(s) booked',
-                    style:
-                        TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                   ),
                 ],
               ),
@@ -188,7 +194,11 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Icon(Icons.arrow_forward, color: Colors.grey.shade500, size: 18),
+                  Icon(
+                    Icons.arrow_forward,
+                    color: Colors.grey.shade500,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: _DateBox(
@@ -212,7 +222,9 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
                       '${_monthName(_month.month)} ${_month.year}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -226,15 +238,20 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 children: _weekdayLabels
-                    .map((w) => Expanded(
-                          child: Center(
-                            child: Text(w,
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                    fontWeight: FontWeight.w600)),
+                    .map(
+                      (w) => Expanded(
+                        child: Center(
+                          child: Text(
+                            w,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ))
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -249,8 +266,7 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
                     return GridView.builder(
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: cellCount,
-                      gridDelegate:
-                          SliverGridDelegateWithFixedCrossAxisCount(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 7,
                         childAspectRatio: cellWidth / cellHeight,
                       ),
@@ -259,10 +275,10 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
                         if (dayNum < 1 || dayNum > daysInMonth) {
                           return const SizedBox.shrink();
                         }
-                        final day =
-                            DateTime(_month.year, _month.month, dayNum);
-                        final bookedCount =
-                            roomProvider.bookedRoomIdsOn(day).length;
+                        final day = DateTime(_month.year, _month.month, dayNum);
+                        final bookedCount = roomProvider
+                            .bookedRoomIdsOn(day)
+                            .length;
                         final fullyBooked =
                             totalRooms > 0 && bookedCount >= totalRooms;
                         final isPast = day.isBefore(_today);
@@ -291,8 +307,9 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
                           child: InkWell(
                             borderRadius: BorderRadius.circular(8),
                             onTap: isPast ? null : () => _onDayTap(day),
-                            onLongPress:
-                                isPast ? null : () => _showDayRooms(context, day),
+                            onLongPress: isPast
+                                ? null
+                                : () => _showDayRooms(context, day),
                             child: Container(
                               decoration: BoxDecoration(
                                 color: bg,
@@ -346,9 +363,12 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
             Padding(
               padding: const EdgeInsets.all(16),
               child: FilledButton(
-                onPressed: _checkIn != null && _checkOut != null ? _confirm : null,
+                onPressed: _checkIn != null && _checkOut != null
+                    ? _confirm
+                    : null,
                 style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48)),
+                  minimumSize: const Size.fromHeight(48),
+                ),
                 child: const Text('Confirm dates'),
               ),
             ),
@@ -360,8 +380,18 @@ class _DateSelectionScreenState extends State<DateSelectionScreen> {
 
   String _monthName(int month) {
     const names = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     return names[month - 1];
   }
@@ -384,7 +414,10 @@ class _DateBox extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+          ),
           Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),

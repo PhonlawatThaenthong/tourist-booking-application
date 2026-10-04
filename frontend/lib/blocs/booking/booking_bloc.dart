@@ -36,10 +36,12 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
   /// is the exclusion constraint in PostgreSQL — never rely on this to prevent
   /// a double booking.
   bool isRoomBooked(String roomId, DateTime checkIn, DateTime checkOut) {
-    return state.bookings.any((b) =>
-        b.roomId == roomId &&
-        b.status != BookingStatus.cancelled &&
-        b.overlaps(checkIn, checkOut));
+    return state.bookings.any(
+      (b) =>
+          b.roomId == roomId &&
+          b.status != BookingStatus.cancelled &&
+          b.overlaps(checkIn, checkOut),
+    );
   }
 
   // ---- Reporting --------------------------------------------------------
@@ -108,10 +110,12 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
         guests: event.guests,
         totalPrice: event.totalPrice,
       );
-      emit(state.copyWith(
-        bookings: [...state.bookings, booking],
-        lastCreatedBooking: booking,
-      ));
+      emit(
+        state.copyWith(
+          bookings: [...state.bookings, booking],
+          lastCreatedBooking: booking,
+        ),
+      );
     } on RepositoryException catch (e) {
       emit(state.copyWith(errorMessage: e.message));
     }
@@ -120,14 +124,12 @@ class BookingBloc extends Bloc<BookingEvent, BookingState> {
   Future<void> _onApprove(
     BookingApproveRequested event,
     Emitter<BookingState> emit,
-  ) =>
-      _transition(event.bookingId, BookingStatus.approved, emit);
+  ) => _transition(event.bookingId, BookingStatus.approved, emit);
 
   Future<void> _onCancel(
     BookingCancelRequested event,
     Emitter<BookingState> emit,
-  ) =>
-      _transition(event.bookingId, BookingStatus.cancelled, emit);
+  ) => _transition(event.bookingId, BookingStatus.cancelled, emit);
 
   Future<void> _onCustomerCancel(
     BookingCustomerCancelRequested event,

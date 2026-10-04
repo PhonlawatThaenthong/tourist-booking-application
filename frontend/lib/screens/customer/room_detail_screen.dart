@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../blocs/room/room_bloc.dart';
+import '../../blocs/room/room_event.dart';
 import '../../models/room.dart';
 import '../../utils/formatters.dart';
 import '../../widgets/app_image.dart';
+import '../../widgets/pull_to_refresh.dart';
 import 'booking_screen.dart';
 
 class RoomDetailScreen extends StatefulWidget {
@@ -33,117 +37,147 @@ class _RoomDetailScreenState extends State<RoomDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final room = widget.room;
+    // The latest copy from the bloc, so pull-to-refresh picks up a new
+    // price or photo; the room passed in is the fallback.
+    final room = context.select<RoomBloc, Room>(
+      (b) => b.state.rooms.firstWhere(
+        (r) => r.id == widget.room.id,
+        orElse: () => widget.room,
+      ),
+    );
     final images = room.imageUrls.isEmpty ? [''] : room.imageUrls;
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 280,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Stack(
-                fit: StackFit.expand,
-                children: [
-                  PageView.builder(
-                    controller: _pageController,
-                    itemCount: images.length,
-                    onPageChanged: (i) => setState(() => _imageIndex = i),
-                    itemBuilder: (_, i) => _Image(url: images[i]),
-                  ),
-                  if (images.length > 1)
-                    Positioned(
-                      bottom: 12,
-                      left: 0,
-                      right: 0,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List.generate(
-                          images.length,
-                          (i) => AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: _imageIndex == i ? 18 : 8,
-                            height: 8,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(
-                                  alpha: _imageIndex == i ? 1 : 0.5),
-                              borderRadius: BorderRadius.circular(4),
+      body: RefreshIndicator(
+        // Below the expanded photo header rather than over the status bar.
+        edgeOffset: MediaQuery.paddingOf(context).top + kToolbarHeight,
+        onRefresh: () =>
+            reloadBloc(context.read<RoomBloc>(), const RoomStarted()),
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 280,
+              pinned: true,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    PageView.builder(
+                      controller: _pageController,
+                      itemCount: images.length,
+                      onPageChanged: (i) => setState(() => _imageIndex = i),
+                      itemBuilder: (_, i) => _Image(url: images[i]),
+                    ),
+                    if (images.length > 1)
+                      Positioned(
+                        bottom: 12,
+                        left: 0,
+                        right: 0,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            images.length,
+                            (i) => AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              width: _imageIndex == i ? 18 : 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(
+                                  alpha: _imageIndex == i ? 1 : 0.5,
+                                ),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(room.name,
-                            style: Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(fontWeight: FontWeight.bold)),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            room.name,
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Chip(
+                          label: Text(room.type.label),
+                          backgroundColor: Colors.teal.shade50,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.people_outline,
+                          size: 18,
+                          color: Colors.grey.shade700,
+                        ),
+                        const SizedBox(width: 4),
+                        Text('Up to ${room.capacity} guests'),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'About this room',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                      Chip(
-                        label: Text(room.type.label),
-                        backgroundColor: Colors.teal.shade50,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.people_outline,
-                          size: 18, color: Colors.grey.shade700),
-                      const SizedBox(width: 4),
-                      Text('Up to ${room.capacity} guests'),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text('About this room',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Text(room.description,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      room.description,
                       style: TextStyle(
-                          color: Colors.grey.shade800, height: 1.4)),
-                  const SizedBox(height: 20),
-                  Text('Amenities',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: room.amenities
-                        .map((a) => Chip(
+                        color: Colors.grey.shade800,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      'Amenities',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: room.amenities
+                          .map(
+                            (a) => Chip(
                               avatar: const Icon(Icons.check, size: 16),
                               label: Text(a),
-                            ))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 100),
-                ],
+                            ),
+                          )
+                          .toList(),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-      bottomSheet: _BookingBar(
+      // bottomNavigationBar, not bottomSheet: Scaffold strips the bottom
+      // system inset from a bottomSheet, so its SafeArea had nothing to pad
+      // and the bar sat under the phone's navigation buttons. Here it also
+      // takes its own space, so the body no longer needs a 100px spacer.
+      bottomNavigationBar: _BookingBar(
         room: room,
         onBook: () => Navigator.of(context).push(
           MaterialPageRoute(
@@ -167,7 +201,7 @@ class _BookingBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -182,13 +216,18 @@ class _BookingBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(Format.money(room.pricePerNight),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: Color(0xFF00796B))),
-                Text('per night',
-                    style: TextStyle(color: Colors.grey.shade600)),
+                Text(
+                  Format.money(room.pricePerNight),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: Color(0xFF00796B),
+                  ),
+                ),
+                Text(
+                  'per night',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
               ],
             ),
             const SizedBox(width: 16),

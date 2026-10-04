@@ -27,10 +27,12 @@ class MockBookingRepository implements BookingRepository {
     // The real backend rejects an overlapping range with 409 (exclusion
     // constraint). The mock reproduces that so the UI error path is exercised
     // before the API exists.
-    final clash = _bookings.any((b) =>
-        b.roomId == roomId &&
-        b.status != BookingStatus.cancelled &&
-        b.overlaps(checkIn, checkOut));
+    final clash = _bookings.any(
+      (b) =>
+          b.roomId == roomId &&
+          b.status != BookingStatus.cancelled &&
+          b.overlaps(checkIn, checkOut),
+    );
     if (clash) {
       throw const RepositoryException(
         'This room is already booked for the selected dates.',
@@ -86,8 +88,9 @@ class MockBookingRepository implements BookingRepository {
     final i = _indexOf(id);
     final old = _bookings[i];
     final nights = checkOut.difference(checkIn).inDays;
-    final perNight =
-        old.nights == 0 ? old.totalPrice : old.totalPrice / old.nights;
+    final perNight = old.nights == 0
+        ? old.totalPrice
+        : old.totalPrice / old.nights;
     final updated = Booking(
       id: old.id,
       roomId: old.roomId,

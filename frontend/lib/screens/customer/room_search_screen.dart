@@ -4,8 +4,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../config.dart';
 import '../../models/room.dart';
 import '../../blocs/room/room_bloc.dart';
+import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/booking/booking_event.dart';
 import '../../blocs/room/room_event.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/pull_to_refresh.dart';
 import '../../widgets/room_card.dart';
 import 'date_selection_screen.dart';
 import 'hotel_location_screen.dart';
@@ -41,8 +44,10 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
       query: _query,
     );
 
-    final results =
-        roomProvider.search(filter, isRoomBooked: roomProvider.isRoomBooked);
+    final results = roomProvider.search(
+      filter,
+      isRoomBooked: roomProvider.isRoomBooked,
+    );
 
     // Hero figures come from the live inventory rather than being written into
     // the copy, so they stay true when rooms are added or repriced.
@@ -68,80 +73,87 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-          SliverToBoxAdapter(
-            child: _ResortHero(
-              roomCount: bookable.length,
-              fromPrice: bookable.isEmpty
-                  ? null
-                  : bookable
-                      .map((r) => r.pricePerNight)
-                      .reduce((a, b) => a < b ? a : b),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: _FilterBar(
-              dateRange: _dateRange,
-              types: _types,
-              onSearchChanged: (v) => setState(() => _query = v),
-              onPickDates: _pickDates,
-              onToggleType: (t) => setState(() {
-                _types.contains(t) ? _types.remove(t) : _types.add(t);
-              }),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Text('${results.length} room(s) available',
-                      style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const Spacer(),
-                  if (_dateRange != null)
-                    Text(
-                      '${Format.date(_dateRange!.start)} → '
-                      '${Format.date(_dateRange!.end)}',
-                      style:
-                          TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                    ),
-                ],
+            SliverToBoxAdapter(
+              child: _ResortHero(
+                roomCount: bookable.length,
+                fromPrice: bookable.isEmpty
+                    ? null
+                    : bookable
+                          .map((r) => r.pricePerNight)
+                          .reduce((a, b) => a < b ? a : b),
               ),
             ),
-          ),
-          if (_dateRange == null)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: _NeedDatesState(onPickDates: _pickDates),
-            )
-          else if (results.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: _EmptyState(),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              sliver: SliverList.builder(
-                itemCount: results.length,
-                itemBuilder: (_, i) {
-                  final room = results[i];
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: RoomCard(
-                      room: room,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => RoomDetailScreen(
-                            room: room,
-                            initialRange: _dateRange,
+            SliverToBoxAdapter(
+              child: _FilterBar(
+                dateRange: _dateRange,
+                types: _types,
+                onSearchChanged: (v) => setState(() => _query = v),
+                onPickDates: _pickDates,
+                onToggleType: (t) => setState(() {
+                  _types.contains(t) ? _types.remove(t) : _types.add(t);
+                }),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      '${results.length} room(s) available',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    if (_dateRange != null)
+                      Text(
+                        '${Format.date(_dateRange!.start)} → '
+                        '${Format.date(_dateRange!.end)}',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            if (_dateRange == null)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: _NeedDatesState(onPickDates: _pickDates),
+              )
+            else if (results.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: _EmptyState(),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                sliver: SliverList.builder(
+                  itemCount: results.length,
+                  itemBuilder: (_, i) {
+                    final room = results[i];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: RoomCard(
+                        room: room,
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => RoomDetailScreen(
+                              room: room,
+                              initialRange: _dateRange,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -160,8 +172,10 @@ class _RoomSearchScreenState extends State<RoomSearchScreen> {
   /// Re-fetch rooms and bookings so a slot released by an expired hold shows as
   /// available again. Availability here is computed client-side from both.
   Future<void> _refresh() async {
-    context.read<RoomBloc>().add(const RoomStarted());
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    await Future.wait([
+      reloadBloc(context.read<RoomBloc>(), const RoomStarted()),
+      reloadBloc(context.read<BookingBloc>(), const BookingStarted()),
+    ]);
   }
 }
 
@@ -278,7 +292,7 @@ class _FilterBar extends StatelessWidget {
                 dateRange == null
                     ? 'Select dates'
                     : '${Format.date(dateRange!.start)} - '
-                        '${Format.date(dateRange!.end)}',
+                          '${Format.date(dateRange!.end)}',
                 overflow: TextOverflow.ellipsis,
               ),
               style: OutlinedButton.styleFrom(
@@ -321,11 +335,16 @@ class _NeedDatesState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.calendar_month_outlined,
-                size: 64, color: Colors.grey.shade400),
+            Icon(
+              Icons.calendar_month_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
+            ),
             const SizedBox(height: 12),
-            const Text('Select your dates to see available rooms',
-                textAlign: TextAlign.center),
+            const Text(
+              'Select your dates to see available rooms',
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: onPickDates,
@@ -351,8 +370,10 @@ class _EmptyState extends StatelessWidget {
           Icon(Icons.search_off, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 12),
           const Text('No rooms match your filters'),
-          Text('Try different dates or another room type',
-              style: TextStyle(color: Colors.grey.shade600)),
+          Text(
+            'Try different dates or another room type',
+            style: TextStyle(color: Colors.grey.shade600),
+          ),
         ],
       ),
     );

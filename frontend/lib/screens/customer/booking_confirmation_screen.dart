@@ -37,21 +37,27 @@ class BookingConfirmationScreen extends StatelessWidget {
                 color: Colors.green.shade50,
                 shape: BoxShape.circle,
               ),
-              child: Icon(Icons.check_circle,
-                  color: Colors.green.shade600, size: 72),
+              child: Icon(
+                Icons.check_circle,
+                color: Colors.green.shade600,
+                size: 72,
+              ),
             ),
           ),
           const SizedBox(height: 16),
           Center(
-            child: Text('Thank you! Your stay is booked.',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
+            child: Text(
+              'Thank you! Your stay is booked.',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            ),
           ),
           Center(
-            child: Text('Booking reference: ${booking.id}',
-                style: TextStyle(color: Colors.grey.shade700)),
+            child: Text(
+              'Booking reference: ${booking.id}',
+              style: TextStyle(color: Colors.grey.shade700),
+            ),
           ),
           const SizedBox(height: 24),
           Card(
@@ -65,8 +71,11 @@ class BookingConfirmationScreen extends StatelessWidget {
                   _row('Guests', '${booking.guests}'),
                   _row('Nights', '${booking.nights}'),
                   const Divider(),
-                  _row('Total paid', Format.money(booking.totalPrice),
-                      bold: true),
+                  _row(
+                    'Total paid',
+                    Format.money(booking.totalPrice),
+                    bold: true,
+                  ),
                 ],
               ),
             ),
@@ -81,12 +90,13 @@ class BookingConfirmationScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.mark_email_read,
-                          color: Colors.blue.shade700),
+                      Icon(Icons.mark_email_read, color: Colors.blue.shade700),
                       const SizedBox(width: 8),
                       const Expanded(
-                        child: Text('Confirmation sent automatically',
-                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: Text(
+                          'Confirmation sent automatically',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
                   ),
@@ -101,8 +111,10 @@ class BookingConfirmationScreen extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(confirmationMessage,
-                        style: const TextStyle(fontSize: 13, height: 1.4)),
+                    child: Text(
+                      confirmationMessage,
+                      style: const TextStyle(fontSize: 13, height: 1.4),
+                    ),
                   ),
                 ],
               ),
@@ -110,8 +122,7 @@ class BookingConfirmationScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: () =>
-                Navigator.of(context).popUntil((r) => r.isFirst),
+            onPressed: () => Navigator.of(context).popUntil((r) => r.isFirst),
             child: const Text('Back to home'),
           ),
         ],
@@ -126,9 +137,12 @@ class BookingConfirmationScreen extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(color: Colors.grey.shade700)),
-          Text(value,
-              style: TextStyle(
-                  fontWeight: bold ? FontWeight.bold : FontWeight.w500)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );

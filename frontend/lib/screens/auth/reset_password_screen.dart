@@ -41,10 +41,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
     try {
       await context.read<AuthRepository>().resetPassword(
-            email: widget.email,
-            code: _codeCtrl.text.trim(),
-            newPassword: _passwordCtrl.text,
-          );
+        email: widget.email,
+        code: _codeCtrl.text.trim(),
+        newPassword: _passwordCtrl.text,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Password reset. Please sign in again.')),
@@ -86,7 +86,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         prefixIcon: Icon(Icons.pin_outlined),
                         counterText: '',
                       ),
-                      validator: (v) => (v == null || !RegExp(r'^\d{6}$').hasMatch(v.trim()))
+                      validator: (v) =>
+                          (v == null || !RegExp(r'^\d{6}$').hasMatch(v.trim()))
                           ? 'Enter the 6-digit code'
                           : null,
                     ),
@@ -98,11 +99,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         labelText: 'New password',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined),
-                          onPressed: () =>
-                              setState(() => _obscurePassword = !_obscurePassword),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword,
+                          ),
                         ),
                       ),
                       validator: (v) => (v == null || v.length < 8)
@@ -117,11 +121,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         labelText: 'Confirm new password',
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
-                          icon: Icon(_obscureConfirm
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined),
-                          onPressed: () =>
-                              setState(() => _obscureConfirm = !_obscureConfirm),
+                          icon: Icon(
+                            _obscureConfirm
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
+                          onPressed: () => setState(
+                            () => _obscureConfirm = !_obscureConfirm,
+                          ),
                         ),
                       ),
                       validator: (v) => (v != _passwordCtrl.text)

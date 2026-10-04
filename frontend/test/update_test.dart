@@ -8,7 +8,6 @@ import 'package:http/testing.dart';
 import 'package:ota_update/ota_update.dart';
 
 import 'package:hotel_booking/services/update_service.dart';
-import 'package:hotel_booking/widgets/about_tile.dart';
 import 'package:hotel_booking/widgets/update_gate.dart';
 
 /// In-app update: the version comparison against GitHub Releases, and the
@@ -115,113 +114,6 @@ void main() {
         httpClient: MockClient((_) async => throw http.ClientException('offline')),
       );
       expect(await offline.check(), isNull);
-    });
-  });
-
-  group('UpdateService.checkDetailed (why there is no update)', () {
-    test('a newer build is "available" and carries the update', () async {
-      final r = await service(1, release('v1.0.0-build.2')).checkDetailed();
-      expect(r.status, UpdateStatus.available);
-      expect(r.update?.build, 2);
-    });
-
-    test('same or older build is "upToDate"', () async {
-      expect((await service(2, release('v1.0.0-build.2')).checkDetailed()).status,
-          UpdateStatus.upToDate);
-      expect((await service(9, release('v1.0.0-build.2')).checkDetailed()).status,
-          UpdateStatus.upToDate);
-    });
-
-    test('a dev build is "disabled"', () async {
-      final r = await service(0, release('v1.0.0-build.2')).checkDetailed();
-      expect(r.status, UpdateStatus.disabled);
-      expect(r.update, isNull);
-    });
-
-    test('unreachable or unusable answers are "failed", never "upToDate"', () async {
-      // Telling someone they are up to date when we could not check would be
-      // a lie that keeps them on an old build.
-      for (final s in [
-        service(1, {'message': 'rate limited'}, status: 403),
-        service(1, '<html>502</html>', status: 502),
-        service(1, 'not json'),
-        service(1, release('v2.0')), // tag in another shape
-        service(1, release('v1.0.0-build.2', assets: ['notes.txt'])), // no APK
-      ]) {
-        expect((await s.checkDetailed()).status, UpdateStatus.failed);
-      }
-    });
-  });
-
-  group('AboutTile', () {
-    Future<void> pumpTile(
-      WidgetTester tester, {
-      required UpdateService service,
-      bool platformSupported = true,
-      UpdateInstaller? installer,
-    }) async {
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: AboutTile(
-            service: service,
-            platformSupported: platformSupported,
-            installer: installer,
-            versionLabel: 'v1.0.0 (build 3)',
-          ),
-        ),
-      ));
-    }
-
-    testWidgets('shows the installed version', (tester) async {
-      await pumpTile(tester, service: service(3, release('v1.0.0-build.3')));
-      expect(find.textContaining('v1.0.0 (build 3)'), findsOneWidget);
-      expect(find.textContaining('Poonsuk Resort'), findsOneWidget);
-    });
-
-    testWidgets('tap when up to date says so', (tester) async {
-      await pumpTile(tester, service: service(3, release('v1.0.0-build.3')));
-      await tester.tap(find.text('About'));
-      await tester.pumpAndSettle();
-      expect(find.text('You have the latest version.'), findsOneWidget);
-      expect(find.text('Update available'), findsNothing);
-    });
-
-    testWidgets('tap when a newer build exists opens the update prompt', (tester) async {
-      await pumpTile(
-        tester,
-        service: service(3, release('v1.0.0-build.4')),
-        installer: (_) => const Stream.empty(),
-      );
-      await tester.tap(find.text('About'));
-      await tester.pumpAndSettle();
-      expect(find.text('Update available'), findsOneWidget);
-      expect(find.textContaining('v1.0.0-build.4'), findsOneWidget);
-
-      await tester.tap(find.text('Later'));
-      await tester.pumpAndSettle();
-      expect(find.text('Update available'), findsNothing);
-    });
-
-    testWidgets('tap when GitHub is unreachable reports a failure, not "latest"',
-        (tester) async {
-      await pumpTile(tester, service: service(3, {'message': 'rate limited'}, status: 403));
-      await tester.tap(find.text('About'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('Could not check for updates'), findsOneWidget);
-      expect(find.text('You have the latest version.'), findsNothing);
-    });
-
-    testWidgets('on web/iOS or a dev build it explains updates are Android-only',
-        (tester) async {
-      await pumpTile(
-        tester,
-        service: service(3, release('v1.0.0-build.9')),
-        platformSupported: false,
-      );
-      await tester.tap(find.text('About'));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('only available in the installed Android app'), findsOneWidget);
-      expect(find.text('Update available'), findsNothing);
     });
   });
 

@@ -72,9 +72,9 @@ class AppImage extends StatelessWidget {
   }
 
   Widget _defaultPlaceholder() => Container(
-        color: Colors.grey.shade200,
-        child: const Center(
-          child: Icon(Icons.king_bed_outlined, size: 48, color: Colors.grey),
-        ),
-      );
+    color: Colors.grey.shade200,
+    child: const Center(
+      child: Icon(Icons.king_bed_outlined, size: 48, color: Colors.grey),
+    ),
+  );
 }

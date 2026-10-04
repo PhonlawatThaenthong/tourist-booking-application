@@ -10,6 +10,7 @@ import '../../blocs/booking/booking_event.dart';
 import '../../blocs/room/room_bloc.dart';
 import '../../blocs/room/room_event.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/pull_to_refresh.dart';
 
 /// Month calendar view of room bookings — lets staff/admin see, per room,
 /// which rooms are booked on a given day. The grid fits the screen without
@@ -22,7 +23,15 @@ class BookingCalendarScreen extends StatefulWidget {
 }
 
 class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
-  static const _weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _weekdayLabels = [
+    'Mon',
+    'Tue',
+    'Wed',
+    'Thu',
+    'Fri',
+    'Sat',
+    'Sun',
+  ];
 
   late DateTime _month; // first day of the displayed month
 
@@ -80,12 +89,16 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
             _infoRow('Phone', customer?.phone ?? '—'),
             const Divider(height: 20),
             _infoRow('Booking', booking.id),
-            _infoRow('Dates',
-                '${Format.date(booking.checkIn)} → ${Format.date(booking.checkOut)}'),
+            _infoRow(
+              'Dates',
+              '${Format.date(booking.checkIn)} → ${Format.date(booking.checkOut)}',
+            ),
             _infoRow('Guests', '${booking.guests}'),
             _infoRow('Status', booking.status.label),
-            _infoRow('Payment',
-                '${booking.paymentStatus.label} · ${Format.money(booking.totalPrice)}'),
+            _infoRow(
+              'Payment',
+              '${booking.paymentStatus.label} · ${Format.money(booking.totalPrice)}',
+            ),
           ],
         ),
         actions: [
@@ -99,19 +112,21 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
   }
 
   Widget _infoRow(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 70,
-              child: Text(label,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-            ),
-            Expanded(child: Text(value)),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
-      );
+        Expanded(child: Text(value)),
+      ],
+    ),
+  );
 
   void _showDayBookings(BuildContext context, DateTime day) {
     final bookings = context.read<BookingBloc>().all;
@@ -154,13 +169,14 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                     child: Text(
                       Format.date(day),
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                   Text(
                     '${bookedRooms.length}/${rooms.length} room(s) booked',
-                    style:
-                        TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                   ),
                 ],
               ),
@@ -201,7 +217,10 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
                             onTap: booking == null
                                 ? null
                                 : () => _showBookingDetails(
-                                    sheetContext, room, booking),
+                                    sheetContext,
+                                    room,
+                                    booking,
+                                  ),
                           ),
                         );
                       },
@@ -229,158 +248,179 @@ class _BookingCalendarScreenState extends State<BookingCalendarScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.chevron_left),
-                    onPressed: () => _changeMonth(-1),
-                  ),
-                  Expanded(
-                    child: Text(
-                      '${_monthName(_month.month)} ${_month.year}',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
+        child: RefreshableBody(
+          onRefresh: () => Future.wait([
+            reloadBloc(context.read<BookingBloc>(), const BookingStarted()),
+            reloadBloc(context.read<RoomBloc>(), const RoomStarted()),
+          ]),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_left),
+                      onPressed: () => _changeMonth(-1),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: () => _changeMonth(1),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: _weekdayLabels
-                    .map((w) => Expanded(
-                          child: Center(
-                            child: Text(w,
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                    fontWeight: FontWeight.w600)),
-                          ),
-                        ))
-                    .toList(),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final cellWidth = constraints.maxWidth / 7;
-                    final cellHeight = constraints.maxHeight / rowCount;
-                    return GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: cellCount,
-                      gridDelegate:
-                          SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 7,
-                        childAspectRatio: cellWidth / cellHeight,
+                    Expanded(
+                      child: Text(
+                        '${_monthName(_month.month)} ${_month.year}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                      itemBuilder: (_, i) {
-                        final dayNum = i - leadingBlanks + 1;
-                        if (dayNum < 1 || dayNum > daysInMonth) {
-                          return const SizedBox.shrink();
-                        }
-                        final day =
-                            DateTime(_month.year, _month.month, dayNum);
-                        final roomCodes = _bookingsOn(day, bookings)
-                            .map((b) => b.roomName)
-                            .toList();
-                        final isToday = day == today;
-                        const maxCodesShown = 3;
-
-                        return Padding(
-                          padding: const EdgeInsets.all(3),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(8),
-                            onTap: () => _showDayBookings(context, day),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: isToday ? Colors.teal.shade50 : null,
-                                border: isToday
-                                    ? Border.all(color: Colors.teal.shade300)
-                                    : null,
-                                borderRadius: BorderRadius.circular(8),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: () => _changeMonth(1),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: _weekdayLabels
+                      .map(
+                        (w) => Expanded(
+                          child: Center(
+                            child: Text(
+                              w,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                                fontWeight: FontWeight.w600,
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      '$dayNum',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.black87,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      final cellWidth = constraints.maxWidth / 7;
+                      final cellHeight = constraints.maxHeight / rowCount;
+                      return GridView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: cellCount,
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          childAspectRatio: cellWidth / cellHeight,
+                        ),
+                        itemBuilder: (_, i) {
+                          final dayNum = i - leadingBlanks + 1;
+                          if (dayNum < 1 || dayNum > daysInMonth) {
+                            return const SizedBox.shrink();
+                          }
+                          final day = DateTime(
+                            _month.year,
+                            _month.month,
+                            dayNum,
+                          );
+                          final roomCodes = _bookingsOn(
+                            day,
+                            bookings,
+                          ).map((b) => b.roomName).toList();
+                          final isToday = day == today;
+                          const maxCodesShown = 3;
+
+                          return Padding(
+                            padding: const EdgeInsets.all(3),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () => _showDayBookings(context, day),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: isToday ? Colors.teal.shade50 : null,
+                                  border: isToday
+                                      ? Border.all(color: Colors.teal.shade300)
+                                      : null,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 2,
+                                ),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        '$dayNum',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black87,
+                                        ),
                                       ),
-                                    ),
-                                    if (roomCodes.isNotEmpty) ...[
-                                      const SizedBox(height: 2),
-                                      Wrap(
-                                        alignment: WrapAlignment.center,
-                                        spacing: 2,
-                                        runSpacing: 2,
-                                        children: [
-                                          for (final code
-                                              in roomCodes.take(maxCodesShown))
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 4,
-                                                vertical: 1,
+                                      if (roomCodes.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Wrap(
+                                          alignment: WrapAlignment.center,
+                                          spacing: 2,
+                                          runSpacing: 2,
+                                          children: [
+                                            for (final code in roomCodes.take(
+                                              maxCodesShown,
+                                            ))
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 4,
+                                                      vertical: 1,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.orange.shade100,
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                                child: Text(
+                                                  code,
+                                                  style: TextStyle(
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        Colors.orange.shade900,
+                                                  ),
+                                                ),
                                               ),
-                                              decoration: BoxDecoration(
-                                                color: Colors.orange.shade100,
-                                                borderRadius:
-                                                    BorderRadius.circular(4),
-                                              ),
-                                              child: Text(
-                                                code,
+                                            if (roomCodes.length >
+                                                maxCodesShown)
+                                              Text(
+                                                '+${roomCodes.length - maxCodesShown}',
                                                 style: TextStyle(
                                                   fontSize: 9,
                                                   fontWeight: FontWeight.bold,
                                                   color: Colors.orange.shade900,
                                                 ),
                                               ),
-                                            ),
-                                          if (roomCodes.length > maxCodesShown)
-                                            Text(
-                                              '+${roomCodes.length - maxCodesShown}',
-                                              style: TextStyle(
-                                                fontSize: 9,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.orange.shade900,
-                                              ),
-                                            ),
-                                        ],
-                                      ),
+                                          ],
+                                        ),
+                                      ],
                                     ],
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

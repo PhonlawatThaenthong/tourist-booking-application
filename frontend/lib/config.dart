@@ -11,6 +11,25 @@ class AppConfig {
   static const String checkInTime = '14:00';
   static const String checkOutTime = '12:00';
 
+  /// Who a guest contacts to cancel a booking. Guests no longer cancel from
+  /// the app; the cancel button shows these details instead, so the front
+  /// desk handles refunds and frees the room. Same number the chatbot gives
+  /// when it is unavailable (backend chatbot.service.ts). Override per build:
+  ///
+  ///   flutter build apk --dart-define=ADMIN_PHONE=0812345678
+  static const String adminContactName = String.fromEnvironment(
+    'ADMIN_CONTACT_NAME',
+    defaultValue: 'Poonsuk Resort front desk',
+  );
+  static const String adminPhone = String.fromEnvironment(
+    'ADMIN_PHONE',
+    defaultValue: '081-598-1199',
+  );
+
+  /// Optional; the row is hidden while empty.
+  static const String adminEmail = String.fromEnvironment('ADMIN_EMAIL');
+  static const String adminLineId = String.fromEnvironment('ADMIN_LINE_ID');
+
   /// Base URL of the NestJS API.
   ///
   /// Default assumes the API is reachable on the same host as the app
@@ -62,9 +81,11 @@ class AppConfig {
 
   /// What the About row shows, e.g. `v1.0.0 (build 12)` — the same name the
   /// release carries on GitHub, so a user can tell which APK they have.
-  static String get versionLabel => appBuild > 0
-      ? 'v$appVersion (build $appBuild)'
-      : 'v$appVersion (dev build)';
+  static String get versionLabel => versionLabelFor(appVersion, appBuild);
+
+  /// Build 0 means a dev/CI build (see [appBuild]).
+  static String versionLabelFor(String version, int build) =>
+      build > 0 ? 'v$version (build $build)' : 'v$version (dev build)';
 
   /// GitHub repository whose Releases hold the APKs (owner/name). Public, so
   /// the app can read the latest release without a token.

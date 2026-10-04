@@ -31,12 +31,17 @@ class _AdminHomeState extends State<AdminHome> {
 
     final destinations = <_NavItem>[
       const _NavItem(Icons.dashboard_outlined, Icons.dashboard, 'Dashboard'),
+      const _NavItem(Icons.event_note_outlined, Icons.event_note, 'Bookings'),
       const _NavItem(
-          Icons.event_note_outlined, Icons.event_note, 'Bookings'),
+        Icons.receipt_long_outlined,
+        Icons.receipt_long,
+        'Payments',
+      ),
       const _NavItem(
-          Icons.receipt_long_outlined, Icons.receipt_long, 'Payments'),
-      const _NavItem(
-          Icons.calendar_month_outlined, Icons.calendar_month, 'Calendar'),
+        Icons.calendar_month_outlined,
+        Icons.calendar_month,
+        'Calendar',
+      ),
       const _NavItem(Icons.king_bed_outlined, Icons.king_bed, 'Rooms'),
       const _NavItem(Icons.bar_chart_outlined, Icons.bar_chart, 'Reports'),
       const _NavItem(Icons.group_outlined, Icons.group, 'Staff'),
@@ -89,11 +94,13 @@ class _AdminHomeState extends State<AdminHome> {
                       ? NavigationRailLabelType.none
                       : NavigationRailLabelType.all,
                   destinations: destinations
-                      .map((d) => NavigationRailDestination(
-                            icon: Icon(d.icon),
-                            selectedIcon: Icon(d.selectedIcon),
-                            label: Text(d.label),
-                          ))
+                      .map(
+                        (d) => NavigationRailDestination(
+                          icon: Icon(d.icon),
+                          selectedIcon: Icon(d.selectedIcon),
+                          label: Text(d.label),
+                        ),
+                      )
                       .toList(),
                 ),
                 const VerticalDivider(width: 1),
@@ -114,11 +121,13 @@ class _AdminHomeState extends State<AdminHome> {
             selectedIndex: _index,
             onDestinationSelected: (i) => setState(() => _index = i),
             destinations: destinations
-                .map((d) => NavigationDestination(
-                      icon: Icon(d.icon),
-                      selectedIcon: Icon(d.selectedIcon),
-                      label: d.label,
-                    ))
+                .map(
+                  (d) => NavigationDestination(
+                    icon: Icon(d.icon),
+                    selectedIcon: Icon(d.selectedIcon),
+                    label: d.label,
+                  ),
+                )
                 .toList(),
           );
         },

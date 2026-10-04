@@ -52,7 +52,8 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           BlocBuilder<ChatBloc, ChatState>(
             buildWhen: (a, b) =>
-                a.messages.isEmpty != b.messages.isEmpty || a.sending != b.sending,
+                a.messages.isEmpty != b.messages.isEmpty ||
+                a.sending != b.sending,
             builder: (context, state) => IconButton(
               tooltip: 'New conversation',
               icon: const Icon(Icons.refresh),
@@ -166,12 +167,14 @@ class _Bubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Column(
-        crossAxisAlignment:
-            mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: mine
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment:
-                mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+            mainAxisAlignment: mine
+                ? MainAxisAlignment.end
+                : MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (!mine) ...[const _BotAvatar(), const SizedBox(width: 8)],
@@ -332,8 +335,10 @@ class _InputBar extends StatelessWidget {
                     hintText: 'พิมพ์คำถาม…',
                     counterText: '',
                     isDense: true,
-                    contentPadding:
-                        EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),

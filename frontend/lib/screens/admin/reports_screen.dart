@@ -61,7 +61,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     try {
       final results = await Future.wait([
         repo.fetchRevenue(
-            from: _range.start, to: _range.end, groupBy: _groupBy),
+          from: _range.start,
+          to: _range.end,
+          groupBy: _groupBy,
+        ),
         repo.fetchOccupancy(from: _range.start, to: _range.end),
       ]);
       if (!mounted || id != _requestId) return;
@@ -87,9 +90,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
     if (picked == null || !mounted) return;
     if (picked.duration.inDays + 1 > _maxRangeDays) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Please choose a range of $_maxRangeDays days or less'),
-      ));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please choose a range of $_maxRangeDays days or less'),
+        ),
+      );
       return;
     }
     _range = picked;
@@ -110,6 +115,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         children: [
           _Filters(
@@ -197,7 +203,8 @@ class _Filters extends StatelessWidget {
           onPressed: onPickRange,
           icon: const Icon(Icons.date_range, size: 18),
           label: Text(
-              '${Format.date(range.start)} – ${Format.date(range.end)}'),
+            '${Format.date(range.start)} – ${Format.date(range.end)}',
+          ),
         ),
         SegmentedButton<RevenueGroupBy>(
           segments: const [
@@ -226,8 +233,7 @@ class _ErrorCard extends StatelessWidget {
       color: scheme.errorContainer,
       child: ListTile(
         leading: Icon(Icons.error_outline, color: scheme.onErrorContainer),
-        title: Text(message,
-            style: TextStyle(color: scheme.onErrorContainer)),
+        title: Text(message, style: TextStyle(color: scheme.onErrorContainer)),
         trailing: TextButton(onPressed: onRetry, child: const Text('Retry')),
       ),
     );
@@ -256,8 +262,7 @@ class _RevenueChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final points = report.series;
-    final maxRevenue =
-        points.fold<double>(0, (m, p) => math.max(m, p.revenue));
+    final maxRevenue = points.fold<double>(0, (m, p) => math.max(m, p.revenue));
     if (maxRevenue == 0) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
@@ -269,71 +274,84 @@ class _RevenueChart extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Peak ${Format.money(maxRevenue)}',
-            style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          'Peak ${Format.money(maxRevenue)}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
         const SizedBox(height: 8),
-        LayoutBuilder(builder: (context, constraints) {
-          final slot = math.max(_minSlot, constraints.maxWidth / points.length);
-          final labelEvery = math.max(1, (_labelWidth / slot).ceil());
-          final width = slot * points.length;
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final slot = math.max(
+              _minSlot,
+              constraints.maxWidth / points.length,
+            );
+            final labelEvery = math.max(1, (_labelWidth / slot).ceil());
+            final width = slot * points.length;
 
-          final chart = SizedBox(
-            width: width,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (var i = 0; i < points.length; i++)
-                  SizedBox(
-                    width: slot,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Tooltip(
-                          message: '${_longLabel(points[i].period)}\n'
-                              '${Format.money(points[i].revenue)}',
-                          child: Container(
-                            height: _chartHeight,
-                            alignment: Alignment.bottomCenter,
-                            padding: EdgeInsets.symmetric(
-                                horizontal: math.min(4, slot * 0.15)),
+            final chart = SizedBox(
+              width: width,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  for (var i = 0; i < points.length; i++)
+                    SizedBox(
+                      width: slot,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Tooltip(
+                            message:
+                                '${_longLabel(points[i].period)}\n'
+                                '${Format.money(points[i].revenue)}',
                             child: Container(
-                              height: _chartHeight *
-                                  points[i].revenue /
-                                  maxRevenue,
-                              decoration: BoxDecoration(
-                                color: barColor,
-                                borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(3)),
+                              height: _chartHeight,
+                              alignment: Alignment.bottomCenter,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: math.min(4, slot * 0.15),
+                              ),
+                              child: Container(
+                                height:
+                                    _chartHeight *
+                                    points[i].revenue /
+                                    maxRevenue,
+                                decoration: BoxDecoration(
+                                  color: barColor,
+                                  borderRadius: const BorderRadius.vertical(
+                                    top: Radius.circular(3),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        const Divider(height: 1),
-                        SizedBox(
-                          height: 20,
-                          child: i % labelEvery == 0
-                              ? OverflowBox(
-                                  maxWidth: _labelWidth * 1.5,
-                                  child: Text(
-                                    _shortLabel(points[i].period),
-                                    style: const TextStyle(fontSize: 10),
-                                    maxLines: 1,
-                                  ),
-                                )
-                              : null,
-                        ),
-                      ],
+                          const Divider(height: 1),
+                          SizedBox(
+                            height: 20,
+                            child: i % labelEvery == 0
+                                ? OverflowBox(
+                                    maxWidth: _labelWidth * 1.5,
+                                    child: Text(
+                                      _shortLabel(points[i].period),
+                                      style: const TextStyle(fontSize: 10),
+                                      maxLines: 1,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          );
+                ],
+              ),
+            );
 
-          return width > constraints.maxWidth
-              ? SingleChildScrollView(
-                  scrollDirection: Axis.horizontal, child: chart)
-              : chart;
-        }),
+            return width > constraints.maxWidth
+                ? SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: chart,
+                  )
+                : chart;
+          },
+        ),
       ],
     );
   }
@@ -383,12 +401,16 @@ class _RateRow extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: Text('$label · ${stat.rooms} '
-                    '${stat.rooms == 1 ? 'room' : 'rooms'}',
-                    style: TextStyle(fontWeight: weight)),
+                child: Text(
+                  '$label · ${stat.rooms} '
+                  '${stat.rooms == 1 ? 'room' : 'rooms'}',
+                  style: TextStyle(fontWeight: weight),
+                ),
               ),
-              Text('${stat.rate.toStringAsFixed(1)}%',
-                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text(
+                '${stat.rate.toStringAsFixed(1)}%',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -402,8 +424,10 @@ class _RateRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text('${stat.bookedNights} / ${stat.availableNights} room-nights',
-              style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            '${stat.bookedNights} / ${stat.availableNights} room-nights',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ),
     );
@@ -460,21 +484,22 @@ class _InventorySection extends StatelessWidget {
   const _InventorySection();
 
   Widget _kv(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(k),
-            Text(v, style: const TextStyle(fontWeight: FontWeight.bold)),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(k),
+        Text(v, style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     final rooms = context.watch<RoomBloc>().allRooms;
-    final available =
-        rooms.where((r) => r.status == RoomStatus.available).length;
+    final available = rooms
+        .where((r) => r.status == RoomStatus.available)
+        .length;
 
     return _Section(
       title: 'Room inventory',
@@ -502,9 +527,10 @@ class _Section extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16)),
+            Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
             const SizedBox(height: 12),
             child,
           ],
@@ -549,9 +575,11 @@ class _BarRow extends StatelessWidget {
           const SizedBox(width: 8),
           SizedBox(
             width: 28,
-            child: Text('$value',
-                textAlign: TextAlign.end,
-                style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              '$value',
+              textAlign: TextAlign.end,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

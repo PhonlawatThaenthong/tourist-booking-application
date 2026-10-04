@@ -23,9 +23,10 @@ abstract class BookingRepository {
     required double totalPrice,
   });
 
-  /// Backend: `POST /api/bookings/:id/cancel` — the customer's own cancel.
-  /// Allowed only before the check-in day; a paid booking comes back
-  /// REFUNDED. Staff cancel through [updateStatus] instead.
+  /// Backend: `POST /api/bookings/:id/cancel` — staff/admin only; a
+  /// customer token gets 403 (guests contact the front desk instead, see
+  /// MyBookingsScreen). A paid booking comes back REFUNDED. The app's staff
+  /// screens cancel through [updateStatus].
   Future<Booking> cancelBooking(String id);
 
   /// Backend: `POST /api/staff/bookings/:id/check-in`. Only an approved

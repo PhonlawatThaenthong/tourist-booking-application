@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../config.dart';
 import '../../models/user.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
-import '../../widgets/about_tile.dart';
+import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/booking/booking_event.dart';
+import '../../blocs/restaurant/restaurant_bloc.dart';
+import '../../blocs/restaurant/restaurant_event.dart';
+import '../../blocs/room/room_bloc.dart';
+import '../../blocs/room/room_event.dart';
+import '../../widgets/pull_to_refresh.dart';
 import 'hotel_location_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -17,78 +24,99 @@ class ProfileScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Center(
-            child: CircleAvatar(
-              radius: 44,
-              backgroundColor: Colors.teal.shade100,
-              child: Text(
-                user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                style: const TextStyle(
-                    fontSize: 36, fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Center(
-            child: Text(user.name,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.bold)),
-          ),
-          Center(child: Text(user.role.label)),
-          const SizedBox(height: 24),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.email_outlined),
-                  title: const Text('Email'),
-                  subtitle: Text(user.email),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.phone_outlined),
-                  title: const Text('Phone'),
-                  subtitle: Text(user.phone),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.location_on_outlined),
-                  title: const Text('Hotel location'),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const HotelLocationScreen()),
+      // Nothing on this page is fetched separately (the account comes with
+      // the session), so a pull here refreshes what the other tabs show.
+      body: RefreshIndicator(
+        onRefresh: () => Future.wait([
+          reloadBloc(context.read<RoomBloc>(), const RoomStarted()),
+          reloadBloc(context.read<BookingBloc>(), const BookingStarted()),
+          reloadBloc(context.read<RestaurantBloc>(), const RestaurantStarted()),
+        ]),
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(20),
+          children: [
+            Center(
+              child: CircleAvatar(
+                radius: 44,
+                backgroundColor: Colors.teal.shade100,
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                const Divider(height: 1),
-                // Real installed version; tap checks for a newer release.
-                const AboutTile(),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () =>
-                context.read<AuthBloc>().add(const AuthLogoutRequested()),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.red,
-              minimumSize: const Size.fromHeight(50),
+            const SizedBox(height: 12),
+            Center(
+              child: Text(
+                user.name,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              ),
             ),
-            icon: const Icon(Icons.logout),
-            label: const Text('Sign out'),
-          ),
-        ],
+            Center(child: Text(user.role.label)),
+            const SizedBox(height: 24),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.email_outlined),
+                    title: const Text('Email'),
+                    subtitle: Text(user.email),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.phone_outlined),
+                    title: const Text('Phone'),
+                    subtitle: Text(user.phone),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.location_on_outlined),
+                    title: const Text('Hotel location'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const HotelLocationScreen(),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  // The installed build, not a fixed string: the release
+                  // workflow compiles the version in (AppConfig.versionLabel).
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: const Text('About'),
+                    subtitle: Text(
+                      '${AppConfig.hotelName} · ${AppConfig.versionLabel}',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  context.read<AuthBloc>().add(const AuthLogoutRequested()),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                minimumSize: const Size.fromHeight(50),
+              ),
+              icon: const Icon(Icons.logout),
+              label: const Text('Sign out'),
+            ),
+          ],
+        ),
       ),
     );
   }

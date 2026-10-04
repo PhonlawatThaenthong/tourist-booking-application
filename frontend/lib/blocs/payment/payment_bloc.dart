@@ -34,15 +34,19 @@ class PaymentAdminBloc extends Bloc<PaymentAdminEvent, PaymentAdminState> {
   Future<void> _onApprove(
     PaymentApproveRequested event,
     Emitter<PaymentAdminState> emit,
-  ) =>
-      _verify(emit, () => _repository.verify(event.paymentId, approve: true));
+  ) => _verify(emit, () => _repository.verify(event.paymentId, approve: true));
 
   Future<void> _onReject(
     PaymentRejectRequested event,
     Emitter<PaymentAdminState> emit,
-  ) =>
-      _verify(emit,
-          () => _repository.verify(event.paymentId, approve: false, reason: event.reason));
+  ) => _verify(
+    emit,
+    () => _repository.verify(
+      event.paymentId,
+      approve: false,
+      reason: event.reason,
+    ),
+  );
 
   Future<void> _verify(
     Emitter<PaymentAdminState> emit,
@@ -52,11 +56,13 @@ class PaymentAdminBloc extends Bloc<PaymentAdminEvent, PaymentAdminState> {
     try {
       await action();
       final rows = await _repository.fetchPending(status: state.filter);
-      emit(state.copyWith(
-        payments: rows,
-        loading: false,
-        actionSeq: state.actionSeq + 1,
-      ));
+      emit(
+        state.copyWith(
+          payments: rows,
+          loading: false,
+          actionSeq: state.actionSeq + 1,
+        ),
+      );
     } on RepositoryException catch (e) {
       emit(state.copyWith(loading: false, error: e.message));
     }

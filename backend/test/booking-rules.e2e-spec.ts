@@ -185,7 +185,7 @@ describe('Booking rules (e2e)', () => {
   it('a cancelled booking frees its dates', async () => {
     const range = nextRange();
     const res = await book(alice, { roomId, ...range, guests: 1 }).expect(201);
-    await cancel(alice, res.body.id).expect(200);
+    await cancel(staff, res.body.id).expect(200);
     await book(bob, { roomId, ...range, guests: 1 }).expect(201);
   });
 
@@ -202,29 +202,35 @@ describe('Booking rules (e2e)', () => {
 
   // ------------------------------------------------------------ cancelling
 
-  it('a customer cannot cancel someone else\'s booking', async () => {
+  // Guests contact the front desk; only staff/admin cancel (and refund).
+
+  it('a customer cannot cancel, not even their own booking', async () => {
     const res = await book(alice, { roomId, ...nextRange(), guests: 1 }).expect(201);
+    await cancel(alice, res.body.id).expect(403);
     await cancel(bob, res.body.id).expect(403);
+    // Refused before the lookup, so an unknown id gives nothing away either.
+    await cancel(alice, '00000000-0000-4000-8000-000000000000').expect(403);
+    // Still standing; staff tidy it up so the range is free again.
+    await cancel(staff, res.body.id).expect(200);
   });
 
   it('cancelling twice is refused', async () => {
     const res = await book(alice, { roomId, ...nextRange(), guests: 1 }).expect(201);
-    const first = await cancel(alice, res.body.id).expect(200);
+    const first = await cancel(staff, res.body.id).expect(200);
     expect(first.body.status).toBe('cancelled');
-    await cancel(alice, res.body.id).expect(409);
+    await cancel(staff, res.body.id).expect(409);
   });
 
   it('cancelling an unknown booking 404s, a malformed id 400s', async () => {
-    await cancel(alice, '00000000-0000-4000-8000-000000000000').expect(404);
-    await cancel(alice, 'abc').expect(400);
+    await cancel(staff, '00000000-0000-4000-8000-000000000000').expect(404);
+    await cancel(staff, 'abc').expect(400);
   });
 
-  it('a customer cannot cancel once the stay has started', async () => {
+  it('staff can cancel a stay that has already started (no-shows, disputes)', async () => {
     const res = await book(alice, {
       roomId: todayRoomId, checkIn: todayAtResort(0), checkOut: todayAtResort(1), guests: 1,
     }).expect(201);
-    await cancel(alice, res.body.id).expect(400);
-    // Staff still can (no-shows, disputes).
+    await cancel(alice, res.body.id).expect(403);
     await cancel(staff, res.body.id).expect(200);
   });
 

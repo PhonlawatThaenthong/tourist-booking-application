@@ -8,6 +8,7 @@ import '../../blocs/booking/booking_bloc.dart';
 import '../../blocs/booking/booking_event.dart';
 import '../../blocs/booking/booking_state.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/pull_to_refresh.dart';
 
 /// Back-office view of bookings, filtered by status. Everyone on the staff
 /// side can view and check guests in and out; approving, rescheduling and
@@ -30,7 +31,8 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
     });
   }
 
-  void _refresh() => context.read<BookingBloc>().add(const BookingStarted());
+  Future<void> _refresh() =>
+      reloadBloc(context.read<BookingBloc>(), const BookingStarted());
 
   @override
   Widget build(BuildContext context) {
@@ -46,8 +48,9 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
       // Nothing else on this screen reports a failed action, so a refused
       // check-in (say, the server's date moved on) would otherwise vanish.
       listenWhen: (_, state) => state.errorMessage != null,
-      listener: (context, state) => ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(state.errorMessage!))),
+      listener: (context, state) => ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(state.errorMessage!))),
       child: Column(
         children: [
           SingleChildScrollView(
@@ -66,7 +69,7 @@ class _ManageBookingsScreenState extends State<ManageBookingsScreen> {
           ),
           Expanded(
             child: RefreshIndicator(
-              onRefresh: () async => _refresh(),
+              onRefresh: _refresh,
               child: list.isEmpty
                   ? ListView(
                       physics: const AlwaysScrollableScrollPhysics(),
@@ -158,19 +161,21 @@ class _AdminBookingCard extends StatelessWidget {
   }
 
   Widget _infoRow(String label, String value) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 70,
-              child: Text(label,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-            ),
-            Expanded(child: Text(value)),
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 4),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 70,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
         ),
-      );
+        Expanded(child: Text(value)),
+      ],
+    ),
+  );
 
   Future<void> _cancel(BuildContext context) async {
     final confirmed = await showDialog<bool>(
@@ -178,7 +183,8 @@ class _AdminBookingCard extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Cancel booking?'),
         content: Text(
-            'Are you sure you want to cancel booking ${booking.id} for ${booking.customerName}? This action cannot be undone.'),
+          'Are you sure you want to cancel booking ${booking.id} for ${booking.customerName}? This action cannot be undone.',
+        ),
         actionsAlignment: MainAxisAlignment.center,
         actions: [
           Column(
@@ -215,23 +221,26 @@ class _AdminBookingCard extends StatelessWidget {
     // showDateRangePicker's initialDateRange assertion fails whenever the
     // booking's check-in is already in the past (or its check-out is more
     // than a year out).
-    final firstDate =
-        booking.checkIn.isBefore(today) ? booking.checkIn : today;
+    final firstDate = booking.checkIn.isBefore(today) ? booking.checkIn : today;
     final lastDate = today.add(const Duration(days: 365));
     final picked = await showDateRangePicker(
       context: context,
       firstDate: firstDate,
-      lastDate: booking.checkOut.isAfter(lastDate) ? booking.checkOut : lastDate,
-      initialDateRange:
-          DateTimeRange(start: booking.checkIn, end: booking.checkOut),
+      lastDate: booking.checkOut.isAfter(lastDate)
+          ? booking.checkOut
+          : lastDate,
+      initialDateRange: DateTimeRange(
+        start: booking.checkIn,
+        end: booking.checkOut,
+      ),
     );
     if (picked != null && context.mounted) {
-      context
-          .read<BookingBloc>()
-          .add(BookingRescheduleRequested(booking.id, picked.start, picked.end));
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Booking rescheduled')),
+      context.read<BookingBloc>().add(
+        BookingRescheduleRequested(booking.id, picked.start, picked.end),
       );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Booking rescheduled')));
     }
   }
 
@@ -292,22 +301,31 @@ class _AdminBookingCard extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text('${booking.roomName}  (${booking.id})',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 15)),
+                  child: Text(
+                    '${booking.roomName}  (${booking.id})',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: _color().withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(booking.status.label,
-                      style: TextStyle(
-                          color: _color(),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12)),
+                  child: Text(
+                    booking.status.label,
+                    style: TextStyle(
+                      color: _color(),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -316,7 +334,8 @@ class _AdminBookingCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: Text(
-                      'Guest: ${booking.customerName} · ${booking.guests} guests'),
+                    'Guest: ${booking.customerName} · ${booking.guests} guests',
+                  ),
                 ),
                 TextButton.icon(
                   onPressed: () => _showCustomerInfo(context),
@@ -331,10 +350,14 @@ class _AdminBookingCard extends StatelessWidget {
               ],
             ),
             Text('Check-in: ${Format.checkIn(booking.checkIn)}'),
-            Text('Check-out: ${Format.checkOut(booking.checkOut)} '
-                '(${booking.nights} nights)'),
-            Text('${Format.money(booking.totalPrice)} · '
-                '${booking.paymentStatus.label}'),
+            Text(
+              'Check-out: ${Format.checkOut(booking.checkOut)} '
+              '(${booking.nights} nights)',
+            ),
+            Text(
+              '${Format.money(booking.totalPrice)} · '
+              '${booking.paymentStatus.label}',
+            ),
             const SizedBox(height: 8),
             // Front desk: any staff member, not just admins.
             if (booking.staffCanCheckIn)
@@ -364,22 +387,25 @@ class _AdminBookingCard extends StatelessWidget {
                           provider.add(BookingApproveRequested(booking.id)),
                       icon: const Icon(Icons.check, size: 18),
                       style: FilledButton.styleFrom(
-                          minimumSize: const Size(0, 40)),
+                        minimumSize: const Size(0, 40),
+                      ),
                       label: const Text('Approve'),
                     ),
                   OutlinedButton.icon(
                     onPressed: () => _reschedule(context),
                     icon: const Icon(Icons.edit_calendar, size: 18),
                     style: OutlinedButton.styleFrom(
-                        minimumSize: const Size(0, 40)),
+                      minimumSize: const Size(0, 40),
+                    ),
                     label: const Text('Reschedule'),
                   ),
                   OutlinedButton.icon(
                     onPressed: () => _cancel(context),
                     icon: const Icon(Icons.close, size: 18),
                     style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        minimumSize: const Size(0, 40)),
+                      foregroundColor: Colors.red,
+                      minimumSize: const Size(0, 40),
+                    ),
                     label: const Text('Cancel'),
                   ),
                 ],

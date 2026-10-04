@@ -13,20 +13,84 @@ class MockPaymentRepository implements PaymentRepository {
 
   // A 1x1 transparent PNG, so the admin "view slip" preview has something.
   static final Uint8List _placeholderPng = Uint8List.fromList(<int>[
-    137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 1,
-    0, 0, 0, 1, 8, 6, 0, 0, 0, 31, 21, 196, 137, 0, 0, 0, 13, 73, 68, 65, 84,
-    120, 156, 99, 250, 207, 0, 0, 3, 1, 1, 0, 24, 221, 141, 219, 0, 0, 0, 0,
-    73, 69, 78, 68, 174, 66, 96, 130,
+    137,
+    80,
+    78,
+    71,
+    13,
+    10,
+    26,
+    10,
+    0,
+    0,
+    0,
+    13,
+    73,
+    72,
+    68,
+    82,
+    0,
+    0,
+    0,
+    1,
+    0,
+    0,
+    0,
+    1,
+    8,
+    6,
+    0,
+    0,
+    0,
+    31,
+    21,
+    196,
+    137,
+    0,
+    0,
+    0,
+    13,
+    73,
+    68,
+    65,
+    84,
+    120,
+    156,
+    99,
+    250,
+    207,
+    0,
+    0,
+    3,
+    1,
+    1,
+    0,
+    24,
+    221,
+    141,
+    219,
+    0,
+    0,
+    0,
+    0,
+    73,
+    69,
+    78,
+    68,
+    174,
+    66,
+    96,
+    130,
   ]);
 
   @override
   Future<PaymentInfo> fetchInfo() async => const PaymentInfo(
-        accountName: 'Poonsuk Resort',
-        promptPayId: '000-000-0000',
-        note: 'สแกน QR แล้วโอนตามยอด จากนั้นอัปโหลดสลิปเพื่อรอเจ้าหน้าที่ยืนยัน',
-        qrImageUrl: '',
-        holdMinutes: 3,
-      );
+    accountName: 'Poonsuk Resort',
+    promptPayId: '000-000-0000',
+    note: 'สแกน QR แล้วโอนตามยอด จากนั้นอัปโหลดสลิปเพื่อรอเจ้าหน้าที่ยืนยัน',
+    qrImageUrl: '',
+    holdMinutes: 3,
+  );
 
   @override
   String qrUrl(double amount) => '';
@@ -38,7 +102,8 @@ class MockPaymentRepository implements PaymentRepository {
     required String filename,
   }) async {
     final existing = _byBooking[bookingId];
-    final p = existing ??
+    final p =
+        existing ??
         _MockPayment(
           id: 'pay-${(++_seq).toString().padLeft(4, '0')}',
           bookingId: bookingId,
@@ -59,7 +124,9 @@ class MockPaymentRepository implements PaymentRepository {
   @override
   Future<List<StaffPayment>> fetchPending({String? status}) async {
     return _byBooking.values
-        .where((p) => status == null || p.status == paymentStateFromString(status))
+        .where(
+          (p) => status == null || p.status == paymentStateFromString(status),
+        )
         .map((p) => p.toStaff())
         .toList(growable: false);
   }
@@ -80,8 +147,10 @@ class MockPaymentRepository implements PaymentRepository {
   }) async {
     final p = _byBooking.values.firstWhere(
       (x) => x.id == paymentId,
-      orElse: () =>
-          throw const RepositoryException('Payment not found.', statusCode: 404),
+      orElse: () => throw const RepositoryException(
+        'Payment not found.',
+        statusCode: 404,
+      ),
     );
     if (approve) {
       p.status = PaymentState.succeeded;
@@ -95,7 +164,11 @@ class MockPaymentRepository implements PaymentRepository {
 }
 
 class _MockPayment {
-  _MockPayment({required this.id, required this.bookingId, required this.amount});
+  _MockPayment({
+    required this.id,
+    required this.bookingId,
+    required this.amount,
+  });
 
   final String id;
   final String bookingId;
@@ -106,28 +179,28 @@ class _MockPayment {
   String? rejectReason;
 
   PaymentView toView() => PaymentView(
-        id: id,
-        bookingId: bookingId,
-        amount: amount,
-        method: 'promptpay',
-        status: status,
-        hasSlip: hasSlip,
-        slipUploadedAt: slipUploadedAt,
-        rejectReason: rejectReason,
-      );
+    id: id,
+    bookingId: bookingId,
+    amount: amount,
+    method: 'promptpay',
+    status: status,
+    hasSlip: hasSlip,
+    slipUploadedAt: slipUploadedAt,
+    rejectReason: rejectReason,
+  );
 
   StaffPayment toStaff() => StaffPayment(
-        id: id,
-        bookingId: bookingId,
-        amount: amount,
-        method: 'promptpay',
-        status: status,
-        hasSlip: hasSlip,
-        slipUploadedAt: slipUploadedAt,
-        rejectReason: rejectReason,
-        customerId: '',
-        customerName: 'Mock customer',
-        roomName: 'Mock room',
-        createdAt: slipUploadedAt,
-      );
+    id: id,
+    bookingId: bookingId,
+    amount: amount,
+    method: 'promptpay',
+    status: status,
+    hasSlip: hasSlip,
+    slipUploadedAt: slipUploadedAt,
+    rejectReason: rejectReason,
+    customerId: '',
+    customerName: 'Mock customer',
+    roomName: 'Mock room',
+    createdAt: slipUploadedAt,
+  );
 }
