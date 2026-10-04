@@ -10,9 +10,9 @@ class RevenuePoint {
   const RevenuePoint({required this.period, required this.revenue});
 
   factory RevenuePoint.fromJson(Map<String, dynamic> json) => RevenuePoint(
-        period: json['period'] as String,
-        revenue: (json['revenue'] as num).toDouble(),
-      );
+    period: json['period'] as String,
+    revenue: (json['revenue'] as num).toDouble(),
+  );
 }
 
 /// `GET /api/staff/reports/revenue` — revenue from paid bookings, spread
@@ -31,15 +31,15 @@ class RevenueReport {
   });
 
   factory RevenueReport.fromJson(Map<String, dynamic> json) => RevenueReport(
-        groupBy: json['groupBy'] == 'month'
-            ? RevenueGroupBy.month
-            : RevenueGroupBy.day,
-        total: (json['total'] as num).toDouble(),
-        paidBookings: (json['paidBookings'] as num).toInt(),
-        series: (json['series'] as List<dynamic>)
-            .map((e) => RevenuePoint.fromJson(e as Map<String, dynamic>))
-            .toList(),
-      );
+    groupBy: json['groupBy'] == 'month'
+        ? RevenueGroupBy.month
+        : RevenueGroupBy.day,
+    total: (json['total'] as num).toDouble(),
+    paidBookings: (json['paidBookings'] as num).toInt(),
+    series: (json['series'] as List<dynamic>)
+        .map((e) => RevenuePoint.fromJson(e as Map<String, dynamic>))
+        .toList(),
+  );
 }
 
 class OccupancyStat {
@@ -58,11 +58,11 @@ class OccupancyStat {
   });
 
   factory OccupancyStat.fromJson(Map<String, dynamic> json) => OccupancyStat(
-        rooms: (json['rooms'] as num).toInt(),
-        availableNights: (json['availableNights'] as num).toInt(),
-        bookedNights: (json['bookedNights'] as num).toInt(),
-        rate: (json['rate'] as num).toDouble(),
-      );
+    rooms: (json['rooms'] as num).toInt(),
+    availableNights: (json['availableNights'] as num).toInt(),
+    bookedNights: (json['bookedNights'] as num).toInt(),
+    rate: (json['rate'] as num).toDouble(),
+  );
 }
 
 /// `GET /api/staff/reports/occupancy` — booked / sellable room-nights.

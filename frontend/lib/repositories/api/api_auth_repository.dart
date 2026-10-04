@@ -22,7 +22,10 @@ class ApiAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<AppUser> login({required String email, required String password}) async {
+  Future<AppUser> login({
+    required String email,
+    required String password,
+  }) async {
     final data = await _api.post(
       '/api/auth/login',
       body: {'email': email.trim(), 'password': password},
@@ -130,7 +133,11 @@ class ApiAuthRepository implements AuthRepository {
   }) async {
     await _api.post(
       '/api/auth/reset-password',
-      body: {'email': email.trim(), 'code': code.trim(), 'newPassword': newPassword},
+      body: {
+        'email': email.trim(),
+        'code': code.trim(),
+        'newPassword': newPassword,
+      },
       auth: false,
     );
   }

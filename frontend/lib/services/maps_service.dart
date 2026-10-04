@@ -47,10 +47,10 @@ class MapsService {
   /// Maps opens the actual "Poonsuk Resort@Sadao" place page (reviews,
   /// photos, availability) instead of a bare address pin.
   static Future<void> directionsToHotel() => openDirections(
-        destLat: AppConfig.hotelLat,
-        destLng: AppConfig.hotelLng,
-        destAddress: AppConfig.hotelPlaceName,
-      );
+    destLat: AppConfig.hotelLat,
+    destLng: AppConfig.hotelLng,
+    destAddress: AppConfig.hotelPlaceName,
+  );
 
   static Future<void> _launch(Uri uri) async {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {

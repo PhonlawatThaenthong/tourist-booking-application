@@ -6,8 +6,11 @@ import '../config.dart';
 class Format {
   Format._();
 
-  static final NumberFormat _currency =
-      NumberFormat.currency(locale: 'th_TH', symbol: '฿', decimalDigits: 0);
+  static final NumberFormat _currency = NumberFormat.currency(
+    locale: 'th_TH',
+    symbol: '฿',
+    decimalDigits: 0,
+  );
   static final DateFormat _date = DateFormat('d MMM yyyy');
   static final DateFormat _dateTime = DateFormat('d MMM yyyy, HH:mm');
 

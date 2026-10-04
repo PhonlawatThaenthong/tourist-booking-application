@@ -23,7 +23,8 @@ class AppUser {
   final String name;
   final String email;
   final String phone;
-  final String password; // Plain text for demo only — never do this in production.
+  final String
+  password; // Plain text for demo only — never do this in production.
   final UserRole role;
 
   const AppUser({

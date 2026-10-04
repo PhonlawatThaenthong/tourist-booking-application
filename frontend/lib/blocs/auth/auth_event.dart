@@ -49,6 +49,11 @@ class AuthStaffCreateRequested extends AuthEvent {
   });
 }
 
+/// Re-read the staff/admin account list (pull-to-refresh on Manage staff).
+class AuthUsersRefreshRequested extends AuthEvent {
+  const AuthUsersRefreshRequested();
+}
+
 /// Admin-only: remove a staff or admin account.
 class AuthStaffDeleteRequested extends AuthEvent {
   final String id;

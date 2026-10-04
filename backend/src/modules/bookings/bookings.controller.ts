@@ -49,6 +49,11 @@ export class BookingsController {
     return this.bookings.getPaymentForCustomer(id, user.sub, user.role);
   }
 
+  /**
+   * Staff/admin only (a customer gets 403 and is told to contact the
+   * resort). Kept on this path because a staff token passes JwtAuthGuard
+   * here too; the role check lives in BookingsService.cancel.
+   */
   @Post(':id/cancel')
   @HttpCode(200)
   cancel(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {

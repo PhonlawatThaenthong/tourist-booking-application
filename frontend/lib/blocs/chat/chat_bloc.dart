@@ -45,29 +45,32 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         sessionId: state.sessionId,
         language: languageOf(text),
       );
-      emit(state.copyWith(
-        messages: [
-          ...state.messages,
-          ChatMessage.bot(reply.answer, answered: reply.answered),
-        ],
-        sessionId: reply.sessionId,
-        sending: false,
-      ));
+      emit(
+        state.copyWith(
+          messages: [
+            ...state.messages,
+            ChatMessage.bot(reply.answer, answered: reply.answered),
+          ],
+          sessionId: reply.sessionId,
+          sending: false,
+        ),
+      );
     } on RepositoryException catch (e) {
       // Mark the question itself as failed, so it can be retried in place.
       final marked = [...state.messages];
       final i = marked.lastIndexWhere((m) => m.fromUser && m.text == text);
       if (i >= 0) marked[i] = ChatMessage.user(text, failed: true);
-      emit(state.copyWith(
-        messages: marked,
-        sending: false,
-        errorMessage: e.message,
-      ));
+      emit(
+        state.copyWith(
+          messages: marked,
+          sending: false,
+          errorMessage: e.message,
+        ),
+      );
     }
   }
 }
 
 /// `en` only when the message has no Thai letters at all — the resort's
 /// customers write Thai by default.
-String languageOf(String text) =>
-    RegExp(r'[฀-๿]').hasMatch(text) ? 'th' : 'en';
+String languageOf(String text) => RegExp(r'[฀-๿]').hasMatch(text) ? 'th' : 'en';

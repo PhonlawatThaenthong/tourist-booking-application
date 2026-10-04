@@ -44,12 +44,17 @@ class ApiBookingRepository implements BookingRepository {
     required int guests,
     required double totalPrice,
   }) async {
-    final created = await _api.post('/api/bookings', body: {
-      'roomId': roomId,
-      'checkIn': ymd(checkIn),
-      'checkOut': ymd(checkOut),
-      'guests': guests,
-    }) as Map<String, dynamic>;
+    final created =
+        await _api.post(
+              '/api/bookings',
+              body: {
+                'roomId': roomId,
+                'checkIn': ymd(checkIn),
+                'checkOut': ymd(checkOut),
+                'guests': guests,
+              },
+            )
+            as Map<String, dynamic>;
     return bookingFromJson(created);
   }
 
@@ -82,11 +87,15 @@ class ApiBookingRepository implements BookingRepository {
 
   /// The API re-prices from the stored nightly rate, so no total is sent.
   @override
-  Future<Booking> reschedule(String id, DateTime checkIn, DateTime checkOut) async {
-    final data = await _api.patch('/api/staff/bookings/$id', body: {
-      'checkIn': ymd(checkIn),
-      'checkOut': ymd(checkOut),
-    });
+  Future<Booking> reschedule(
+    String id,
+    DateTime checkIn,
+    DateTime checkOut,
+  ) async {
+    final data = await _api.patch(
+      '/api/staff/bookings/$id',
+      body: {'checkIn': ymd(checkIn), 'checkOut': ymd(checkOut)},
+    );
     return bookingFromJson(data as Map<String, dynamic>);
   }
 }

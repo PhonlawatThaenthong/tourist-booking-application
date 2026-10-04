@@ -11,6 +11,25 @@ class AppConfig {
   static const String checkInTime = '14:00';
   static const String checkOutTime = '12:00';
 
+  /// Who a guest contacts to cancel a booking. Guests no longer cancel from
+  /// the app; the cancel button shows these details instead, so the front
+  /// desk handles refunds and frees the room. Same number the chatbot gives
+  /// when it is unavailable (backend chatbot.service.ts). Override per build:
+  ///
+  ///   flutter build apk --dart-define=ADMIN_PHONE=0812345678
+  static const String adminContactName = String.fromEnvironment(
+    'ADMIN_CONTACT_NAME',
+    defaultValue: 'Poonsuk Resort front desk',
+  );
+  static const String adminPhone = String.fromEnvironment(
+    'ADMIN_PHONE',
+    defaultValue: '081-598-1199',
+  );
+
+  /// Optional; the row is hidden while empty.
+  static const String adminEmail = String.fromEnvironment('ADMIN_EMAIL');
+  static const String adminLineId = String.fromEnvironment('ADMIN_LINE_ID');
+
   /// Base URL of the NestJS API.
   ///
   /// Default assumes the API is reachable on the same host as the app

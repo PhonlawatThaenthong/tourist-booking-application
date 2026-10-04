@@ -77,16 +77,18 @@ class _PaymentScreenState extends State<PaymentScreen> {
       _creating = true;
       final user = context.read<AuthBloc>().state.currentUser!;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<BookingBloc>().add(BookingCreateRequested(
-              roomId: widget.room!.id,
-              roomName: widget.room!.name,
-              customerId: user.id,
-              customerName: user.name,
-              checkIn: widget.checkIn!,
-              checkOut: widget.checkOut!,
-              guests: widget.guests!,
-              totalPrice: widget.total!,
-            ));
+        context.read<BookingBloc>().add(
+          BookingCreateRequested(
+            roomId: widget.room!.id,
+            roomName: widget.room!.name,
+            customerId: user.id,
+            customerName: user.name,
+            checkIn: widget.checkIn!,
+            checkOut: widget.checkOut!,
+            guests: widget.guests!,
+            totalPrice: widget.total!,
+          ),
+        );
       });
     }
   }
@@ -108,7 +110,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
     if (booking == null || info == null) return;
 
     final status = _payment?.status;
-    final holdApplies = status == null ||
+    final holdApplies =
+        status == null ||
         status == PaymentState.pending ||
         status == PaymentState.rejected;
     if (!holdApplies) {
@@ -200,7 +203,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       });
       _maybeStartCountdown();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Slip uploaded — awaiting staff confirmation.')),
+        const SnackBar(
+          content: Text('Slip uploaded — awaiting staff confirmation.'),
+        ),
       );
     } on RepositoryException catch (e) {
       if (!mounted) return;
@@ -315,12 +320,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
           Icon(Icons.timer_outlined, color: color, size: 20),
           const SizedBox(width: 8),
           const Expanded(
-            child: Text('Pay and upload your slip within',
-                style: TextStyle(fontSize: 13)),
+            child: Text(
+              'Pay and upload your slip within',
+              style: TextStyle(fontSize: 13),
+            ),
           ),
-          Text('$m:$sec',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 20, color: color)),
+          Text(
+            '$m:$sec',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 20,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -337,8 +349,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
               children: [
                 Icon(Icons.timer_off, color: Colors.red.shade600, size: 56),
                 const SizedBox(height: 12),
-                const Text('Payment time expired',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const Text(
+                  'Payment time expired',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   'This booking was released so others can book the room. '
@@ -386,11 +400,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
             if (_info != null) ...[
               Text(
                 _info!.accountName,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
               const SizedBox(height: 2),
-              Text('PromptPay: ${_info!.promptPayId}',
-                  style: TextStyle(color: Colors.grey.shade700)),
+              Text(
+                'PromptPay: ${_info!.promptPayId}',
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
               const SizedBox(height: 10),
               Text(
                 _info!.note,
@@ -398,9 +417,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               ),
             ] else
-              Text('Scan with your banking app to pay via PromptPay',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade700)),
+              Text(
+                'Scan with your banking app to pay via PromptPay',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade700),
+              ),
           ],
         ),
       ),
@@ -414,7 +435,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
           ? const SizedBox(
               height: 20,
               width: 20,
-              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            )
           : const Icon(Icons.upload_file),
       style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
       label: Text(_uploading ? 'Uploading…' : 'Upload payment slip'),
@@ -452,8 +477,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Your previous slip was rejected',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Your previous slip was rejected',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   if (reason != null && reason.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text('Reason: $reason'),
@@ -478,10 +505,16 @@ class _PaymentScreenState extends State<PaymentScreen> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                Icon(Icons.hourglass_top, color: Colors.orange.shade700, size: 56),
+                Icon(
+                  Icons.hourglass_top,
+                  color: Colors.orange.shade700,
+                  size: 56,
+                ),
                 const SizedBox(height: 12),
-                const Text('Slip received',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const Text(
+                  'Slip received',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
                 const SizedBox(height: 6),
                 Text(
                   'We are verifying your payment. Your booking will be confirmed '
@@ -517,13 +550,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                Icon(Icons.check_circle, color: Colors.green.shade600, size: 64),
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green.shade600,
+                  size: 64,
+                ),
                 const SizedBox(height: 12),
-                const Text('Payment confirmed',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const Text(
+                  'Payment confirmed',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
                 const SizedBox(height: 6),
-                Text('Your booking is confirmed. Thank you!',
-                    style: TextStyle(color: Colors.grey.shade700)),
+                Text(
+                  'Your booking is confirmed. Thank you!',
+                  style: TextStyle(color: Colors.grey.shade700),
+                ),
               ],
             ),
           ),

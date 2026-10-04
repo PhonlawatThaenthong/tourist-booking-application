@@ -13,11 +13,16 @@ class ApiReportRepository implements ReportRepository {
     required DateTime to,
     RevenueGroupBy groupBy = RevenueGroupBy.day,
   }) async {
-    final data = await _api.get('/api/staff/reports/revenue', query: {
-      'from': ymd(from),
-      'to': ymd(to),
-      'groupBy': groupBy.name,
-    }) as Map<String, dynamic>;
+    final data =
+        await _api.get(
+              '/api/staff/reports/revenue',
+              query: {
+                'from': ymd(from),
+                'to': ymd(to),
+                'groupBy': groupBy.name,
+              },
+            )
+            as Map<String, dynamic>;
     return RevenueReport.fromJson(data);
   }
 
@@ -26,10 +31,12 @@ class ApiReportRepository implements ReportRepository {
     required DateTime from,
     required DateTime to,
   }) async {
-    final data = await _api.get('/api/staff/reports/occupancy', query: {
-      'from': ymd(from),
-      'to': ymd(to),
-    }) as Map<String, dynamic>;
+    final data =
+        await _api.get(
+              '/api/staff/reports/occupancy',
+              query: {'from': ymd(from), 'to': ymd(to)},
+            )
+            as Map<String, dynamic>;
     return OccupancyReport.fromJson(data);
   }
 }

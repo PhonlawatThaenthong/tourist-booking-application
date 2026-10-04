@@ -16,11 +16,16 @@ class ApiChatbotRepository implements ChatbotRepository {
     // auth: true sends the token when signed in and, on a 401, refreshes it
     // and retries once — the backend rejects an expired token rather than
     // quietly answering as an anonymous guest.
-    final data = await _api.post('/api/chatbot/query', body: {
-      'message': message,
-      'sessionId': ?sessionId,
-      'language': language,
-    }) as Map<String, dynamic>;
+    final data =
+        await _api.post(
+              '/api/chatbot/query',
+              body: {
+                'message': message,
+                'sessionId': ?sessionId,
+                'language': language,
+              },
+            )
+            as Map<String, dynamic>;
     return ChatReply(
       sessionId: data['sessionId'] as String,
       answer: data['answer'] as String,

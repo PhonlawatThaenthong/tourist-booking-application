@@ -19,6 +19,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthLogoutRequested>(_onLogoutRequested);
     on<AuthStaffCreateRequested>(_onStaffCreateRequested);
     on<AuthStaffDeleteRequested>(_onStaffDeleteRequested);
+    on<AuthUsersRefreshRequested>(_onUsersRefreshRequested);
   }
 
   final AuthRepository _repository;
@@ -32,23 +33,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // returning user out on every launch.
       user = await _repository.restoreSession();
     } on RepositoryException catch (e) {
-      emit(state.copyWith(
-        initialised: true,
-        status: AuthStatus.unauthenticated,
-        errorMessage: e.message,
-      ));
+      emit(
+        state.copyWith(
+          initialised: true,
+          status: AuthStatus.unauthenticated,
+          errorMessage: e.message,
+        ),
+      );
       return;
     }
 
-    emit(state.copyWith(
-      initialised: true,
-      users: await _loadUsers(),
-      currentUser: user,
-      clearCurrentUser: user == null,
-      status: user != null
-          ? AuthStatus.authenticated
-          : AuthStatus.unauthenticated,
-    ));
+    emit(
+      state.copyWith(
+        initialised: true,
+        users: await _loadUsers(),
+        currentUser: user,
+        clearCurrentUser: user == null,
+        status: user != null
+            ? AuthStatus.authenticated
+            : AuthStatus.unauthenticated,
+      ),
+    );
   }
 
   /// The account list is back-office data. A customer (or a signed-out app) is
@@ -59,6 +64,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return await _repository.listUsers();
     } on RepositoryException {
       return const [];
+    }
+  }
+
+  /// Unlike [_loadUsers], a failed refresh keeps the list already shown
+  /// rather than emptying it; the error is reported instead.
+  Future<void> _onUsersRefreshRequested(
+    AuthUsersRefreshRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      emit(state.copyWith(users: await _repository.listUsers()));
+    } on RepositoryException catch (e) {
+      emit(state.copyWith(errorMessage: e.message));
     }
   }
 
@@ -74,16 +92,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       );
       // Staff signing in can now read the account list that was unavailable
       // before the token existed.
-      emit(state.copyWith(
-        status: AuthStatus.authenticated,
-        currentUser: user,
-        users: await _loadUsers(),
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.authenticated,
+          currentUser: user,
+          users: await _loadUsers(),
+        ),
+      );
     } on RepositoryException catch (e) {
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        errorMessage: e.message,
-      ));
+      emit(state.copyWith(status: AuthStatus.failure, errorMessage: e.message));
     }
   }
 
@@ -99,16 +116,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         phone: event.phone,
         password: event.password,
       );
-      emit(state.copyWith(
-        status: AuthStatus.authenticated,
-        currentUser: user,
-        users: [...state.users, user],
-      ));
+      emit(
+        state.copyWith(
+          status: AuthStatus.authenticated,
+          currentUser: user,
+          users: [...state.users, user],
+        ),
+      );
     } on RepositoryException catch (e) {
-      emit(state.copyWith(
-        status: AuthStatus.failure,
-        errorMessage: e.message,
-      ));
+      emit(state.copyWith(status: AuthStatus.failure, errorMessage: e.message));
     }
   }
 
@@ -117,10 +133,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     await _repository.clearSession();
-    emit(state.copyWith(
-      status: AuthStatus.unauthenticated,
-      clearCurrentUser: true,
-    ));
+    emit(
+      state.copyWith(
+        status: AuthStatus.unauthenticated,
+        clearCurrentUser: true,
+      ),
+    );
   }
 
   Future<void> _onStaffCreateRequested(
@@ -151,9 +169,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
     try {
       await _repository.deleteUser(event.id);
-      emit(state.copyWith(
-        users: state.users.where((u) => u.id != event.id).toList(),
-      ));
+      emit(
+        state.copyWith(
+          users: state.users.where((u) => u.id != event.id).toList(),
+        ),
+      );
     } on RepositoryException catch (e) {
       emit(state.copyWith(errorMessage: e.message));
     }

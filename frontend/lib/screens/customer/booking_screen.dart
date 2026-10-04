@@ -67,15 +67,17 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => PaymentScreen(
-        room: widget.room,
-        checkIn: _range!.start,
-        checkOut: _range!.end,
-        guests: _guests,
-        total: _total,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PaymentScreen(
+          room: widget.room,
+          checkIn: _range!.start,
+          checkOut: _range!.end,
+          guests: _guests,
+          total: _total,
+        ),
       ),
-    ));
+    );
   }
 
   @override
@@ -90,49 +92,58 @@ class _BookingScreenState extends State<BookingScreen> {
             child: ListTile(
               leading: const Icon(Icons.king_bed_outlined),
               title: Text(room.name),
-              subtitle: Text('${room.type.label} · '
-                  '${Format.money(room.pricePerNight)}/night'),
+              subtitle: Text(
+                '${room.type.label} · '
+                '${Format.money(room.pricePerNight)}/night',
+              ),
             ),
           ),
           const SizedBox(height: 16),
-          Text('Dates',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            'Dates',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
             onPressed: _pickDates,
             icon: const Icon(Icons.calendar_today),
             style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(50)),
-            label: Text(_range == null
-                ? 'Select check-in & check-out'
-                : '${Format.date(_range!.start)} → '
-                    '${Format.date(_range!.end)}  ($_nights nights)'),
+              minimumSize: const Size.fromHeight(50),
+            ),
+            label: Text(
+              _range == null
+                  ? 'Select check-in & check-out'
+                  : '${Format.date(_range!.start)} → '
+                        '${Format.date(_range!.end)}  ($_nights nights)',
+            ),
           ),
           const SizedBox(height: 20),
-          Text('Guests',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+          Text(
+            'Guests',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
               Text('Number of guests (max ${room.capacity})'),
               const Spacer(),
               IconButton.outlined(
-                onPressed: _guests > 1
-                    ? () => setState(() => _guests--)
-                    : null,
+                onPressed: _guests > 1 ? () => setState(() => _guests--) : null,
                 icon: const Icon(Icons.remove),
               ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text('$_guests',
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  '$_guests',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               IconButton.outlined(
                 onPressed: _guests < room.capacity
@@ -151,8 +162,9 @@ class _BookingScreenState extends State<BookingScreen> {
                 child: Column(
                   children: [
                     _priceRow(
-                        '${Format.money(room.pricePerNight)} × $_nights nights',
-                        Format.money(_total)),
+                      '${Format.money(room.pricePerNight)} × $_nights nights',
+                      Format.money(_total),
+                    ),
                     const Divider(),
                     _priceRow('Total', Format.money(_total), bold: true),
                   ],
@@ -161,13 +173,17 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
         ],
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16),
-        child: FilledButton(
-          onPressed: _continue,
-          child: Text(_nights > 0
-              ? 'Continue to payment · ${Format.money(_total)}'
-              : 'Continue to payment'),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: FilledButton(
+            onPressed: _continue,
+            child: Text(
+              _nights > 0
+                  ? 'Continue to payment · ${Format.money(_total)}'
+                  : 'Continue to payment',
+            ),
+          ),
         ),
       ),
     );
@@ -182,7 +198,10 @@ class _BookingScreenState extends State<BookingScreen> {
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [Text(label, style: style), Text(value, style: style)],
+        children: [
+          Text(label, style: style),
+          Text(value, style: style),
+        ],
       ),
     );
   }

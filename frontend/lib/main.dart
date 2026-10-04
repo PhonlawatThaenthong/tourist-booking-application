@@ -123,12 +123,14 @@ class HotelBookingApp extends StatelessWidget {
                 RoomBloc(ctx.read<RoomRepository>())..add(const RoomStarted()),
           ),
           BlocProvider(
-            create: (ctx) => BookingBloc(ctx.read<BookingRepository>())
-              ..add(const BookingStarted()),
+            create: (ctx) =>
+                BookingBloc(ctx.read<BookingRepository>())
+                  ..add(const BookingStarted()),
           ),
           BlocProvider(
-            create: (ctx) => RestaurantBloc(ctx.read<RestaurantRepository>())
-              ..add(const RestaurantStarted()),
+            create: (ctx) =>
+                RestaurantBloc(ctx.read<RestaurantRepository>())
+                  ..add(const RestaurantStarted()),
           ),
         ],
         // Rooms and bookings are fetched once at startup, before anyone has
@@ -161,6 +163,19 @@ class HotelBookingApp extends StatelessWidget {
             ],
             supportedLocales: const [Locale('en', 'GB')],
             locale: const Locale('en', 'GB'),
+            // Android 15+ draws apps edge-to-edge, under the system
+            // navigation bar. Keep every route above it in one place rather
+            // than in each screen: pinned bottom buttons and the last item
+            // of a list would otherwise sit under the home/back keys. The
+            // strip behind the system bar gets the page colour. Keyboard
+            // insets are untouched (those are viewInsets, not padding).
+            builder: (context, child) => ColoredBox(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              child: SafeArea(
+                top: false,
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
             home: const SplashScreen(),
           ),
         ),

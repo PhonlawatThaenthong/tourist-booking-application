@@ -3,8 +3,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../models/booking.dart';
 import '../../blocs/booking/booking_bloc.dart';
+import '../../blocs/booking/booking_event.dart';
 import '../../blocs/room/room_bloc.dart';
+import '../../blocs/room/room_event.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/pull_to_refresh.dart';
 import '../../widgets/stat_card.dart';
 
 /// Central overview: key metrics plus the most recent bookings needing action.
@@ -18,59 +21,66 @@ class DashboardScreen extends StatelessWidget {
     final occupancy = bookings.occupancyRate(rooms.allRooms.length);
     final recent = bookings.all.take(5).toList();
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: MediaQuery.of(context).size.width >= 720 ? 4 : 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.3,
-          children: [
-            StatCard(
-              icon: Icons.payments,
-              label: 'Total revenue',
-              value: Format.money(bookings.totalRevenue),
-              color: Colors.green,
-            ),
-            StatCard(
-              icon: Icons.event_available,
-              label: 'Total bookings',
-              value: '${bookings.totalBookings}',
-              color: Colors.blue,
-            ),
-            StatCard(
-              icon: Icons.hourglass_top,
-              label: 'Pending approval',
-              value: '${bookings.pendingCount}',
-              color: Colors.orange,
-            ),
-            StatCard(
-              icon: Icons.percent,
-              label: 'Occupancy (30d)',
-              value: '${(occupancy * 100).toStringAsFixed(0)}%',
-              color: Colors.purple,
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        Text(
-          'Recent bookings',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        if (recent.isEmpty)
-          const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: Text('No bookings yet')),
-          )
-        else
-          ...recent.map((b) => _RecentTile(booking: b)),
-      ],
+    return RefreshIndicator(
+      onRefresh: () => Future.wait([
+        reloadBloc(context.read<BookingBloc>(), const BookingStarted()),
+        reloadBloc(context.read<RoomBloc>(), const RoomStarted()),
+      ]),
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        children: [
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: MediaQuery.of(context).size.width >= 720 ? 4 : 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.3,
+            children: [
+              StatCard(
+                icon: Icons.payments,
+                label: 'Total revenue',
+                value: Format.money(bookings.totalRevenue),
+                color: Colors.green,
+              ),
+              StatCard(
+                icon: Icons.event_available,
+                label: 'Total bookings',
+                value: '${bookings.totalBookings}',
+                color: Colors.blue,
+              ),
+              StatCard(
+                icon: Icons.hourglass_top,
+                label: 'Pending approval',
+                value: '${bookings.pendingCount}',
+                color: Colors.orange,
+              ),
+              StatCard(
+                icon: Icons.percent,
+                label: 'Occupancy (30d)',
+                value: '${(occupancy * 100).toStringAsFixed(0)}%',
+                color: Colors.purple,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Recent bookings',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          if (recent.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: Text('No bookings yet')),
+            )
+          else
+            ...recent.map((b) => _RecentTile(booking: b)),
+        ],
+      ),
     );
   }
 }

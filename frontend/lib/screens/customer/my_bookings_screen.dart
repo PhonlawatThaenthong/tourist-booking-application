@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../config.dart';
 import '../../models/booking.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/booking/booking_bloc.dart';
 import '../../blocs/booking/booking_event.dart';
-import '../../blocs/booking/booking_state.dart';
 import '../../utils/formatters.dart';
+import '../../widgets/pull_to_refresh.dart';
 import 'payment_screen.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -17,12 +20,6 @@ class MyBookingsScreen extends StatefulWidget {
 }
 
 class _MyBookingsScreenState extends State<MyBookingsScreen> {
-  /// The booking whose cancel is in flight. The listener below only reacts
-  /// while this is set: the screen lives in the home IndexedStack and stays
-  /// mounted on every tab, so an unconditional listener would also pop up
-  /// errors that belong to other screens (e.g. a 409 on the payment page).
-  String? _cancellingId;
-
   @override
   void initState() {
     super.initState();
@@ -32,61 +29,99 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
     });
   }
 
-  Future<void> _refresh() async =>
-      context.read<BookingBloc>().add(const BookingStarted());
+  Future<void> _refresh() =>
+      reloadBloc(context.read<BookingBloc>(), const BookingStarted());
 
-  Future<void> _cancel(Booking booking) async {
-    final refundNote = booking.paymentStatus == PaymentStatus.paid
-        ? 'The ${Format.money(booking.totalPrice)} you paid will be refunded.'
-        : 'This cannot be undone.';
-    final confirmed = await showDialog<bool>(
+  /// Guests cannot cancel in the app; staff do it, so refunds and the
+  /// freed room are handled at the desk. This shows who to contact instead.
+  Future<void> _showCancelContact(Booking booking) {
+    final paid = booking.paymentStatus == PaymentStatus.paid;
+    return showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cancel booking?'),
-        content: Text(
-          'Cancel your stay in ${booking.roomName} on '
-          '${Format.date(booking.checkIn)}? $refundNote',
-        ),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          Column(
+        icon: const Icon(Icons.support_agent, size: 36),
+        title: const Text('Contact us to cancel'),
+        content: SingleChildScrollView(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Keep booking'),
+              Text(
+                'To cancel your stay in ${booking.roomName} on '
+                '${Format.date(booking.checkIn)}, please contact '
+                '${AppConfig.adminContactName}'
+                '${paid ? ', who will also arrange your refund' : ''}. '
+                'Quote the booking reference below.',
               ),
-              const SizedBox(height: 8),
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                  textStyle: const TextStyle(fontSize: 13),
+              const SizedBox(height: 12),
+              _ContactRow(
+                icon: Icons.confirmation_number_outlined,
+                label: 'Booking ref',
+                value: booking.id,
+              ),
+              _ContactRow(
+                icon: Icons.phone_outlined,
+                label: 'Phone',
+                value: AppConfig.adminPhone,
+                onTap: () => _launch(
+                  Uri(
+                    scheme: 'tel',
+                    path: AppConfig.adminPhone.replaceAll(
+                      RegExp(r'[^0-9+]'),
+                      '',
+                    ),
+                  ),
                 ),
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Yes, cancel'),
               ),
+              if (AppConfig.adminEmail.isNotEmpty)
+                _ContactRow(
+                  icon: Icons.email_outlined,
+                  label: 'Email',
+                  value: AppConfig.adminEmail,
+                  onTap: () => _launch(
+                    Uri(
+                      scheme: 'mailto',
+                      path: AppConfig.adminEmail,
+                      query: 'subject=Cancel booking ${booking.id}',
+                    ),
+                  ),
+                ),
+              if (AppConfig.adminLineId.isNotEmpty)
+                _ContactRow(
+                  icon: Icons.chat_outlined,
+                  label: 'LINE',
+                  value: AppConfig.adminLineId,
+                ),
             ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+          FilledButton.icon(
+            onPressed: () => _launch(
+              Uri(
+                scheme: 'tel',
+                path: AppConfig.adminPhone.replaceAll(RegExp(r'[^0-9+]'), ''),
+              ),
+            ),
+            icon: const Icon(Icons.call, size: 18),
+            label: const Text('Call'),
           ),
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
-    setState(() => _cancellingId = booking.id);
-    context.read<BookingBloc>().add(BookingCustomerCancelRequested(booking.id));
   }
 
-  void _onBookingState(BuildContext context, BookingState state) {
-    final id = _cancellingId!;
-    final error = state.errorMessage;
-    final cancelled = state.bookings
-        .any((b) => b.id == id && b.status == BookingStatus.cancelled);
-    // Some other emission (e.g. a pull-to-refresh) landed first; keep waiting.
-    if (error == null && !cancelled) return;
-    setState(() => _cancellingId = null);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(error ?? 'Booking cancelled')),
-    );
+  Future<void> _launch(Uri uri) async {
+    final opened = await launchUrl(uri).catchError((_) => false);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No app on this device can open that')),
+      );
+    }
   }
 
   @override
@@ -96,39 +131,84 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
       auth.currentUser!.id,
     );
 
-    return BlocListener<BookingBloc, BookingState>(
-      listenWhen: (_, _) => _cancellingId != null,
-      listener: _onBookingState,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('My bookings')),
-        body: RefreshIndicator(
-          onRefresh: _refresh,
-          child: bookings.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    const SizedBox(height: 100),
-                    Icon(Icons.luggage_outlined,
-                        size: 64, color: Colors.grey.shade400),
-                    const SizedBox(height: 12),
-                    const Center(child: Text('No bookings yet')),
-                    Center(
-                      child: Text('Find a room to get started',
-                          style: TextStyle(color: Colors.grey.shade600)),
-                    ),
-                  ],
-                )
-              : ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  itemCount: bookings.length,
-                  itemBuilder: (_, i) => _BookingTile(
-                    booking: bookings[i],
-                    cancelling: _cancellingId == bookings[i].id,
-                    onCancel: () => _cancel(bookings[i]),
+    return Scaffold(
+      appBar: AppBar(title: const Text('My bookings')),
+      body: RefreshIndicator(
+        onRefresh: _refresh,
+        child: bookings.isEmpty
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  const SizedBox(height: 100),
+                  Icon(
+                    Icons.luggage_outlined,
+                    size: 64,
+                    color: Colors.grey.shade400,
                   ),
+                  const SizedBox(height: 12),
+                  const Center(child: Text('No bookings yet')),
+                  Center(
+                    child: Text(
+                      'Find a room to get started',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  ),
+                ],
+              )
+            : ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: bookings.length,
+                itemBuilder: (_, i) => _BookingTile(
+                  booking: bookings[i],
+                  onCancel: () => _showCancelContact(bookings[i]),
                 ),
-        ),
+              ),
+      ),
+    );
+  }
+}
+
+/// One line of contact detail in the cancel dialog: tap to act on it (call,
+/// email) where that makes sense, long-press or the copy icon to copy.
+class _ContactRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  const _ContactRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
+
+  Future<void> _copy(BuildContext context) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$label copied')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      leading: Icon(icon),
+      title: Text(label),
+      subtitle: Text(
+        value,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+      ),
+      onTap: onTap,
+      onLongPress: () => _copy(context),
+      trailing: IconButton(
+        tooltip: 'Copy',
+        icon: const Icon(Icons.copy, size: 18),
+        onPressed: () => _copy(context),
       ),
     );
   }
@@ -136,13 +216,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
 
 class _BookingTile extends StatelessWidget {
   final Booking booking;
-  final bool cancelling;
   final VoidCallback onCancel;
-  const _BookingTile({
-    required this.booking,
-    required this.cancelling,
-    required this.onCancel,
-  });
+  const _BookingTile({required this.booking, required this.onCancel});
 
   Color _statusColor() {
     switch (booking.status) {
@@ -258,19 +333,10 @@ class _BookingTile extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  // Disabled while in flight so a double tap cannot fire a
-                  // second request, which the server would reject with 409.
-                  onPressed: cancelling ? null : onCancel,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                  ),
-                  icon: cancelling
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.cancel_outlined, size: 18),
+                  // Opens the front-desk contact details; staff cancel.
+                  onPressed: onCancel,
+                  style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                  icon: const Icon(Icons.cancel_outlined, size: 18),
                   label: const Text('Cancel booking'),
                 ),
               ),
