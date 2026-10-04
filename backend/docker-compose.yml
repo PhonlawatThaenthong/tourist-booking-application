@@ -20,6 +20,9 @@ services:
       # `docker compose up`:
       #   SENTRY_RELEASE=$(git rev-parse HEAD) docker compose up -d --build
       SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      # Same host-vs-container split as DB_HOST. No depends_on: the chatbot
+      # is optional (profile below) and the API answers 503 while it is down.
+      CHATBOT_URL: http://chatbot:8000
     ports:
       - "3000:3000"
     volumes:
@@ -68,6 +71,39 @@ services:
       timeout: 3s
       retries: 10
 
+  # The chatbot (FastAPI + RAG) from the separate Chatbot_Project repo,
+  # cloned next to this one at project_booking/Chatbot_Project — hence the
+  # ../../ paths (this file lives in backend/).
+  #
+  # Behind a profile so a plain `docker compose up` still works for anyone
+  # without that repo, a Typhoon key or a built chroma_db. To include it:
+  #   docker compose --profile chatbot up -d --build
+  chatbot:
+    profiles: ["chatbot"]
+    build: ../../Chatbot_Project/resort-chatbot-api
+    env_file: ../../Chatbot_Project/resort-chatbot-api/.env
+    environment:
+      BOOKING_API_BASE_URL: http://api:3000/api
+      # `:-`, never `:?` — compose interpolates the whole file even when this
+      # profile is off, so `:?` would stop people without a key from running
+      # compose at all.
+      BOOKING_API_INTERNAL_KEY: ${CHATBOT_INTERNAL_KEY:-}
+    ports:
+      # Loopback only: lets this machine open /demo, but the chatbot's
+      # /api/v1/knowledge write endpoints have no auth yet, so it must not be
+      # reachable from the network. The app goes through /api/chatbot/query.
+      - "127.0.0.1:8000:8000"
+    volumes:
+      # Read-only, at the path the chatbot's DEFAULT_CHROMA_PATH resolves to
+      # (/app/../indexing-pipeline/chroma_db).
+      - ../../Chatbot_Project/indexing-pipeline/chroma_db:/indexing-pipeline/chroma_db:ro
+      # Keeps the ~1 GB embedding model across container rebuilds.
+      - chatbot-hf-cache:/root/.cache/huggingface
+    depends_on:
+      - api
+    restart: unless-stopped
+
 volumes:
   pgdata:
   uploads:
+  chatbot-hf-cache:

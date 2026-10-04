@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
@@ -15,6 +15,8 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RedisCacheModule } from './modules/cache/redis-cache.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { ChatbotModule } from './modules/chatbot/chatbot.module';
+import { InternalAwareThrottlerGuard } from './common/guards/internal-aware-throttler.guard';
 import { buildDataSourceOptions } from './config/data-source';
 import { getRedisConnection } from './config/redis.config';
 
@@ -25,7 +27,7 @@ import { getRedisConnection } from './config/redis.config';
     SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     // Per-IP, in-memory: correct for a single API instance. Sensitive routes
-    // (login, password reset, QR) tighten this with @Throttle.
+    // (login, password reset, QR, chatbot) tighten this with @Throttle.
     ThrottlerModule.forRoot({
       throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
       errorMessage: 'คำขอถี่เกินไป กรุณารอสักครู่แล้วลองใหม่',
@@ -42,6 +44,7 @@ import { getRedisConnection } from './config/redis.config';
     PaymentsModule,
     NotificationsModule,
     ReportsModule,
+    ChatbotModule,
   ],
   providers: [
     // Reports unhandled exceptions, then rethrows so Nest's own error
@@ -49,7 +52,13 @@ import { getRedisConnection } from './config/redis.config';
     // double-booking gets, a 401, a 400 from ValidationPipe) are not
     // reported — only 5xx and genuinely unhandled throws are.
     { provide: APP_FILTER, useClass: SentryGlobalFilter },
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // The chatbot's tool calls all arrive from its container's single IP, so
+    // GETs carrying X-Internal-Key (= CHATBOT_INTERNAL_KEY) are not counted.
+    // A shared secret, not an IP exemption: Docker Desktop NATs external
+    // traffic on the published port to the same 172.x gateway, so exempting
+    // that range would switch rate limiting off for everyone. The real limit
+    // for chat traffic sits on POST /api/chatbot/query instead.
+    { provide: APP_GUARD, useClass: InternalAwareThrottlerGuard },
   ],
 })
 export class AppModule {}
