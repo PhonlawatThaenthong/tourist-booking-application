@@ -62,6 +62,22 @@ class AppConfig {
     defaultValue: 'development',
   );
 
+  /// Build number of this APK, compiled in by the release pipeline
+  /// (.github/workflows/frontend-release.yml) and equal to the `N` in the
+  /// release tag `v1.0.0-build.N`. It is what the in-app update check compares
+  /// against the newest GitHub Release.
+  ///
+  /// 0 everywhere else (`flutter run`, CI test builds), which switches the
+  /// update check off — a dev build must never offer to replace itself.
+  static const int appBuild = int.fromEnvironment('APP_BUILD');
+
+  /// GitHub repository whose Releases hold the APKs (owner/name). Public, so
+  /// the app can read the latest release without a token.
+  static const String releasesRepo = String.fromEnvironment(
+    'RELEASES_REPO',
+    defaultValue: 'PhonlawatThaenthong/tourist-booking-application',
+  );
+
   /// Hotel coordinates, taken from the "Poonsuk Resort@Sadao" Google Maps
   /// place pin. Used to centre the static map preview and to anchor the
   /// "Open in Google Maps" / "Get directions" links (alongside

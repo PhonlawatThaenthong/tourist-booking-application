@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // Reads google-services.json (Firebase project poonsuk-resort-b8c5e).
@@ -6,12 +9,26 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Release signing key. android/key.properties is git-ignored: CI writes it
+// from GitHub secrets (see .github/workflows/frontend-release.yml). When it
+// is absent the release build falls back to the debug key, so local
+// `flutter build apk --release` keeps working without any setup.
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "com.poonsuk.resort"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Required by the ota_update plugin (in-app update), which is built
+        // with core library desugaring: Android refuses to build an app that
+        // depends on such a library unless the app enables it as well.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -38,11 +55,24 @@ android {
         execution = "ANDROIDX_TEST_ORCHESTRATOR"
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = rootProject.file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
@@ -51,6 +81,9 @@ dependencies {
     // Patrol: runs each instrumentation test in isolation (see
     // testOptions.execution above) and lets `clearPackageData` work.
     androidTestUtil("androidx.test:orchestrator:1.6.1")
+    // Pairs with isCoreLibraryDesugaringEnabled above; same version the
+    // ota_update plugin itself uses.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 kotlin {

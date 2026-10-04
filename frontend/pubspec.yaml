@@ -59,6 +59,7 @@ dependencies:
   webview_flutter_web: ^0.2.3+4
   sentry_flutter: ^9.30.0
   firebase_core: ^4.15.0
+  ota_update: ^7.1.0
 
 dev_dependencies:
   flutter_test:
@@ -112,7 +113,7 @@ sentry:
 # package_name / bundle_id must match applicationId (android/app/build.gradle.kts)
 # and PRODUCT_BUNDLE_IDENTIFIER (ios/Runner.xcodeproj) respectively.
 patrol:
-  app_name: hotel_booking
+  app_name: Poonsuk Resort
   android:
     package_name: com.example.hotel_booking
   ios:

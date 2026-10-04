@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { randomBytes, randomInt, createHash } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { User } from '../users/user.entity';
@@ -68,8 +68,11 @@ export class AuthService {
   }
 
   async logout(rawToken: string): Promise<void> {
+    // IsNull(), not `undefined`: an undefined criterion never matched a row,
+    // so logout used to leave the refresh token usable.
+    // Covered by test/auth.e2e-spec.ts "logout revokes the refresh token".
     await this.refreshRepo.update(
-      { tokenHash: sha256(rawToken), revokedAt: undefined },
+      { tokenHash: sha256(rawToken), revokedAt: IsNull() },
       { revokedAt: new Date() },
     );
   }
