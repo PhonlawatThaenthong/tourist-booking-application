@@ -97,6 +97,11 @@ jobs:
 
       # versionName มาจาก pubspec.yaml (เช่น 1.0.0) ส่วน versionCode ใช้
       # run_number ที่เพิ่มขึ้นทุกรอบ → Android ยอมให้ติดตั้งทับเวอร์ชันก่อนหน้า
+      #
+      # เลขเดียวกันนี้ถูกฝังลงในแอป (--dart-define=APP_BUILD ด้านล่าง) ตอนเปิดแอป
+      # แอปจะเทียบกับ tag ของ release ล่าสุดบน GitHub ถ้า N ใหม่กว่าจะเด้งชวนอัปเดต
+      # (frontend/lib/services/update_service.dart) → ถ้าเปลี่ยนรูปแบบ tag
+      # `v<name>-build.<N>` ต้องแก้ parseBuildNumber ในไฟล์นั้นด้วย
       - name: Compute version
         id: ver
         run: |
@@ -131,6 +136,8 @@ jobs:
             --build-name=${{ steps.ver.outputs.name }} \
             --build-number=${{ steps.ver.outputs.code }} \
             --dart-define=API_BASE_URL=https://${{ vars.API_DOMAIN }} \
+            --dart-define=APP_BUILD=${{ steps.ver.outputs.code }} \
+            --dart-define=RELEASES_REPO=${{ github.repository }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
             --dart-define=SENTRY_ENVIRONMENT=production \
             --dart-define=SENTRY_RELEASE=${{ env.SHA }}

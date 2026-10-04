@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where the ota_update plugin stores a downloaded update APK (app-private
+     storage), so the FileProvider in AndroidManifest.xml may share it with
+     Android's installer. -->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <files-path name="internal_apk_storage" path="ota_update/"/>
+</paths>

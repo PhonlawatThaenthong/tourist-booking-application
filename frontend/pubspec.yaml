@@ -59,6 +59,7 @@ dependencies:
   webview_flutter_web: ^0.2.3+4
   sentry_flutter: ^9.30.0
   firebase_core: ^4.15.0
+  ota_update: ^7.1.0
 
 dev_dependencies:
   flutter_test:

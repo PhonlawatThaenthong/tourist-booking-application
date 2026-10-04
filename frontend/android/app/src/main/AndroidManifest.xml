@@ -2,6 +2,9 @@
     <!-- Release builds need this to reach the API. Flutter only adds it to
          the debug/profile manifests, so without it a release APK is offline. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- In-app update: lets the app hand a downloaded APK to Android's
+         installer (the user still confirms the install prompt). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="Poonsuk Resort"
         android:name="${applicationName}"
@@ -33,6 +36,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- In-app update (ota_update plugin): exposes the downloaded APK to
+             the system installer. Paths are listed in res/xml/filepaths.xml. -->
+        <provider
+            android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
+            android:authorities="${applicationId}.ota_update_provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

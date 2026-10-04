@@ -18,6 +18,7 @@ import 'config.dart';
 import 'repositories/repositories.dart';
 import 'repositories/api/api_repositories.dart';
 import 'screens/splash_screen.dart';
+import 'widgets/update_gate.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -161,7 +162,9 @@ class HotelBookingApp extends StatelessWidget {
             ],
             supportedLocales: const [Locale('en', 'GB')],
             locale: const Locale('en', 'GB'),
-            home: const SplashScreen(),
+            // Checks GitHub Releases for a newer APK once after launch
+            // (release builds on Android only; a no-op everywhere else).
+            home: const UpdateGate(child: SplashScreen()),
           ),
         ),
       ),
