@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../config.dart';
 import '../../models/user.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
+import '../../widgets/about_tile.dart';
 import 'hotel_location_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -72,11 +72,8 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
                 const Divider(height: 1),
-                const ListTile(
-                  leading: Icon(Icons.info_outline),
-                  title: Text('About'),
-                  subtitle: Text('${AppConfig.hotelName} · v1.0.0'),
-                ),
+                // Real installed version; tap checks for a newer release.
+                const AboutTile(),
               ],
             ),
           ),

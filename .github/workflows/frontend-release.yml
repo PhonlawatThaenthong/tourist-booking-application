@@ -137,6 +137,7 @@ jobs:
             --build-number=${{ steps.ver.outputs.code }} \
             --dart-define=API_BASE_URL=https://${{ vars.API_DOMAIN }} \
             --dart-define=APP_BUILD=${{ steps.ver.outputs.code }} \
+            --dart-define=APP_VERSION=${{ steps.ver.outputs.name }} \
             --dart-define=RELEASES_REPO=${{ github.repository }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
             --dart-define=SENTRY_ENVIRONMENT=production \

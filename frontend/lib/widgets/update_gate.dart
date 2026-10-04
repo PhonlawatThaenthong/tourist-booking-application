@@ -49,9 +49,7 @@ class UpdateGate extends StatefulWidget {
 class _UpdateGateState extends State<UpdateGate> {
   late final UpdateService _service = widget.service ?? UpdateService();
 
-  bool get _supported =>
-      widget.platformSupported ??
-      (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
+  bool get _supported => widget.platformSupported ?? updatePlatformSupported;
 
   @override
   void initState() {
@@ -65,75 +63,92 @@ class _UpdateGateState extends State<UpdateGate> {
   Future<void> _check() async {
     final update = await _service.check();
     if (update == null || !mounted) return;
-
-    final accepted = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Update available'),
-        content: Text(
-          'A newer version (${update.tag}) is ready.\n\n'
-          'Your login and data are kept. Android will ask you to confirm '
-          'the installation.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Later'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-    if (accepted != true || !mounted) return;
-
-    final installed = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => _DownloadDialog(
-        update: update,
-        installer: widget.installer ?? _defaultInstaller,
-      ),
-    );
-    // true = Android's installer took over; null = the user cancelled.
-    if (installed != false || !mounted) return;
-
-    // In-app install failed (permission refused, download error, ...): hand
-    // the APK link to the browser instead, which can always download it.
-    await _openInBrowser(update);
-  }
-
-  static Stream<OtaEvent> _defaultInstaller(AppUpdate update) =>
-      OtaUpdate().execute(update.apkUrl, destinationFilename: update.apkName);
-
-  Future<void> _openInBrowser(AppUpdate update) async {
-    final open = widget.openUrl ??
-        (Uri url) => launchUrl(url, mode: LaunchMode.externalApplication);
-    var opened = false;
-    try {
-      opened = await open(Uri.parse(update.apkUrl));
-    } on Object {
-      opened = false;
-    }
-    if (!mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 8),
-        content: Text(
-          opened
-              ? 'Could not install in the app. Downloading in your browser '
-                  'instead — open the file when it finishes.'
-              : 'Could not download the update. Get it from: ${update.pageUrl}',
-        ),
-      ),
+    await offerUpdate(
+      context,
+      update,
+      installer: widget.installer,
+      openUrl: widget.openUrl,
     );
   }
 
   @override
   Widget build(BuildContext context) => widget.child;
 }
+
+/// True when this build can install an update in-app: an Android app, not web.
+bool get updatePlatformSupported =>
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+
+/// Asks the user whether to install [update] and, if they agree, downloads it
+/// and hands it to Android's installer — falling back to the browser when the
+/// in-app install fails. Shared by the launch check ([UpdateGate]) and the
+/// manual check on the profile screen's About row.
+Future<void> offerUpdate(
+  BuildContext context,
+  AppUpdate update, {
+  UpdateInstaller? installer,
+  UrlOpener? openUrl,
+}) async {
+  final accepted = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Update available'),
+      content: Text(
+        'A newer version (${update.tag}) is ready.\n\n'
+        'Your login and data are kept. Android will ask you to confirm '
+        'the installation.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Later'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Update'),
+        ),
+      ],
+    ),
+  );
+  if (accepted != true || !context.mounted) return;
+
+  final installed = await showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => _DownloadDialog(
+      update: update,
+      installer: installer ?? _defaultInstaller,
+    ),
+  );
+  // true = Android's installer took over; null = the user cancelled.
+  if (installed != false || !context.mounted) return;
+
+  // In-app install failed (permission refused, download error, ...): hand
+  // the APK link to the browser instead, which can always download it.
+  final open = openUrl ??
+      (Uri url) => launchUrl(url, mode: LaunchMode.externalApplication);
+  var opened = false;
+  try {
+    opened = await open(Uri.parse(update.apkUrl));
+  } on Object {
+    opened = false;
+  }
+  if (!context.mounted) return;
+  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+    SnackBar(
+      duration: const Duration(seconds: 8),
+      content: Text(
+        opened
+            ? 'Could not install in the app. Downloading in your browser '
+                'instead — open the file when it finishes.'
+            : 'Could not download the update. Get it from: ${update.pageUrl}',
+      ),
+    ),
+  );
+}
+
+Stream<OtaEvent> _defaultInstaller(AppUpdate update) =>
+    OtaUpdate().execute(update.apkUrl, destinationFilename: update.apkName);
 
 /// Shows download progress. Pops `true` once Android's installer has taken
 /// over, `false` on a failure (so the caller can fall back to the browser),

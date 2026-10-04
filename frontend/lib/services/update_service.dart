@@ -30,6 +30,31 @@ class AppUpdate {
   });
 }
 
+/// Outcome of asking GitHub whether a newer release exists.
+enum UpdateStatus {
+  /// A newer build is published; see [UpdateCheck.update].
+  available,
+
+  /// GitHub answered and this build is the newest.
+  upToDate,
+
+  /// This is a dev/CI build (build number 0), which never updates itself.
+  disabled,
+
+  /// GitHub could not be reached or answered something unusable (offline,
+  /// rate limited, no release yet). Says nothing about being up to date.
+  failed,
+}
+
+class UpdateCheck {
+  final UpdateStatus status;
+
+  /// Set only when [status] is [UpdateStatus.available].
+  final AppUpdate? update;
+
+  const UpdateCheck(this.status, [this.update]);
+}
+
 /// Asks GitHub Releases whether a newer APK than this one exists.
 ///
 /// The app is distributed as an APK on GitHub Releases, not through an app
@@ -54,43 +79,54 @@ class UpdateService {
   /// The newer release, or null when up to date, disabled, offline, rate
   /// limited, or anything else goes wrong. Never throws: a failed update check
   /// must not get in the way of using the app.
-  Future<AppUpdate?> check() async {
-    if (!enabled) return null;
+  Future<AppUpdate?> check() async => (await checkDetailed()).update;
+
+  /// Like [check], but says *why* there is no update — for the manual check
+  /// on the About row, where "you are up to date" and "could not check" must
+  /// not look the same. Never throws.
+  Future<UpdateCheck> checkDetailed() async {
+    if (!enabled) return const UpdateCheck(UpdateStatus.disabled);
+    const failed = UpdateCheck(UpdateStatus.failed);
     try {
       final response = await _http.get(
         Uri.parse('https://api.github.com/repos/$_repo/releases/latest'),
         headers: const {'Accept': 'application/vnd.github+json'},
       ).timeout(const Duration(seconds: 10));
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) return failed;
 
       final json = jsonDecode(utf8.decode(response.bodyBytes));
-      if (json is! Map<String, dynamic>) return null;
+      if (json is! Map<String, dynamic>) return failed;
 
       final tag = json['tag_name'];
-      if (tag is! String) return null;
+      if (tag is! String) return failed;
       final build = parseBuildNumber(tag);
-      if (build == null || build <= _currentBuild) return null;
+      // A hand-made release in another tag shape tells us nothing either way.
+      if (build == null) return failed;
+      if (build <= _currentBuild) return const UpdateCheck(UpdateStatus.upToDate);
 
       final assets = json['assets'];
-      if (assets is! List) return null;
+      if (assets is! List) return failed;
       for (final asset in assets) {
         if (asset is! Map) continue;
         final name = asset['name'];
         final url = asset['browser_download_url'];
         if (name is String && url is String && name.toLowerCase().endsWith('.apk')) {
-          return AppUpdate(
-            build: build,
-            tag: tag,
-            apkUrl: url,
-            apkName: name,
-            pageUrl: (json['html_url'] as String?) ??
-                'https://github.com/$_repo/releases/latest',
+          return UpdateCheck(
+            UpdateStatus.available,
+            AppUpdate(
+              build: build,
+              tag: tag,
+              apkUrl: url,
+              apkName: name,
+              pageUrl: (json['html_url'] as String?) ??
+                  'https://github.com/$_repo/releases/latest',
+            ),
           );
         }
       }
-      return null; // a release without an APK is nothing we can install
+      return failed; // a newer release without an APK is nothing we can install
     } on Object {
-      return null;
+      return failed;
     }
   }
 
