@@ -1,0 +1,125 @@
+name: Backend CD
+
+# Deploys the backend to the GCE VM after "Backend CI" passes on main.
+# Setup (GCP resources, repo variables, VM bootstrap): deploy/README.md
+#
+# Gate: workflow_run fires only after CI finished; the `if` below keeps just
+# successful CI runs triggered by a push to main (not PRs).
+# NOTE: workflow_run triggers only once this file exists on the default branch.
+on:
+  workflow_run:
+    workflows: ['Backend CI']
+    types: [completed]
+    branches: [main]
+  # Manual redeploy / rollback to an older commit. This path SKIPS the CI gate,
+  # so only use it for refs that already passed CI.
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag or commit SHA to deploy'
+        required: true
+        default: main
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation: GitHub OIDC token -> GCP, no JSON key
+
+# Never run two deploys at once, and never cancel one halfway (migrations)
+concurrency:
+  group: backend-deploy-production
+  cancel-in-progress: false
+
+env:
+  IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GAR_REPOSITORY }}/api
+
+jobs:
+  build:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.rev.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Build exactly the commit CI tested, not whatever main is now
+          ref: ${{ github.event.workflow_run.head_sha || inputs.ref }}
+
+      - id: rev
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Docker auth for Artifact Registry
+        run: gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push (target production)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          target: production
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.rev.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    # Add "Required reviewers" to this environment in GitHub settings to turn
+    # continuous deployment into continuous delivery (manual approval).
+    environment:
+      name: production
+      url: https://${{ vars.API_DOMAIN }}
+    env:
+      SHA: ${{ needs.build.outputs.sha }}
+      SSH_FLAGS: --zone=${{ vars.GCP_ZONE }} --tunnel-through-iap --quiet
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.build.outputs.sha }}
+
+      - uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      # SSH goes through IAP: port 22 is open only to 35.235.240.0/20, not the internet
+      - name: Copy compose file and deploy script
+        # $SSH_FLAGS is unquoted on purpose: it holds several flags
+        run: |
+          # shellcheck disable=SC2086
+          gcloud compute scp $SSH_FLAGS \
+            backend/docker-compose.prod.yml deploy/deploy.sh \
+            "${{ vars.GCE_INSTANCE }}:/tmp/"
+
+      - name: Deploy on VM
+        run: |
+          # shellcheck disable=SC2086
+          gcloud compute ssh "${{ vars.GCE_INSTANCE }}" $SSH_FLAGS --command "\
+            sudo install -m 0644 /tmp/docker-compose.prod.yml /opt/poonsuk/docker-compose.prod.yml && \
+            sudo install -m 0755 /tmp/deploy.sh /opt/poonsuk/deploy.sh && \
+            sudo /opt/poonsuk/deploy.sh $SHA"
+
+      # Checks the whole path from the internet: DNS -> TLS -> nginx -> api
+      - name: Smoke test over HTTPS
+        run: |
+          for _ in $(seq 1 10); do
+            if curl -fsS --max-time 5 "https://${{ vars.API_DOMAIN }}/health/live"; then exit 0; fi
+            sleep 3
+          done
+          echo "public health check failed" >&2
+          exit 1

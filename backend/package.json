@@ -15,6 +15,7 @@
     "migration:generate": "npm run typeorm -- migration:generate",
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
+    "migration:run:prod": "typeorm migration:run -d dist/config/data-source.js",
     "seed:rooms": "ts-node src/database/seed-rooms.ts",
     "seed:users": "ts-node src/database/seed-users.ts",
     "seed:restaurants": "ts-node src/database/seed-restaurants.ts",

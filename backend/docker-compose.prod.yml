@@ -1,0 +1,95 @@
+# Production stack for the GCE VM (see deploy/README.md).
+#
+# Standalone file, NOT an override of docker-compose.yml: compose merges
+# `ports` lists, so an override could never remove the public 3000:3000 and
+# the 5433/6379 host bindings from the dev file.
+#
+# Differences from the dev compose:
+#   - api comes from Artifact Registry (${API_IMAGE}:${IMAGE_TAG}); the VM never builds
+#   - api is bound to 127.0.0.1 only; host Nginx terminates TLS on 443
+#   - postgres is published on the VM's loopback only; redis publishes nothing
+#
+# Used by deploy/deploy.sh, which exports IMAGE_TAG and SENTRY_RELEASE.
+# API_IMAGE and all secrets come from /opt/poonsuk/.env on the VM.
+
+services:
+  api:
+    image: ${API_IMAGE:?API_IMAGE must be set in .env}:${IMAGE_TAG:?IMAGE_TAG must be exported by deploy.sh}
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DB_PORT: 5432
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      UPLOAD_DIR: /app/uploads
+      # Exactly one proxy hop (host Nginx). Without this the throttler sees
+      # every client as the Docker gateway IP and they share one bucket.
+      TRUST_PROXY: "1"
+      SENTRY_ENVIRONMENT: production
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # busybox wget ships with node:20-alpine; /health/ready checks DB + Redis
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${DB_USER:-poonsuk}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set in .env}
+      POSTGRES_DB: ${DB_NAME:-poonsuk}
+    ports:
+      # VM loopback only (GCE firewall never sees it). Lets you reach the DB
+      # from your PC through an SSH tunnel for seeding / pgAdmin:
+      #   gcloud compute ssh <vm> --tunnel-through-iap -- -N -L 5434:127.0.0.1:5433
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-poonsuk}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}", "--appendonly", "yes"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      # BullMQ jobs (hold expiry, notifications) survive a Redis restart
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+volumes:
+  pgdata:
+  uploads:
+  redisdata:
