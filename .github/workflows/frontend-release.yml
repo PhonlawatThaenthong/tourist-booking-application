@@ -1,0 +1,153 @@
+name: Frontend Release
+
+# ทุกครั้งที่มีโค้ด frontend เข้า main → รอ "Frontend CI" (analyze + test)
+# ผ่านก่อน → ค่อย build release APK แล้วปล่อยเป็น GitHub Release ใหม่
+# ถ้า CI ไม่ผ่าน จะไม่มี release ออกไป (เหมือน Backend CD ที่รอ Backend CI)
+#
+# หมายเหตุ: workflow_run จะทำงานก็ต่อเมื่อไฟล์นี้อยู่บน main แล้วเท่านั้น
+#
+# ต้องตั้งก่อน (Settings → Secrets and variables → Actions):
+#   Variables  API_DOMAIN   ตัวเดียวกับที่ Backend CD ใช้ เช่น api.example.com
+#
+#   Secrets    ANDROID_KEYSTORE_BASE64   keystore (.jks) ที่เข้ารหัส base64
+#              ANDROID_KEYSTORE_PASSWORD
+#              ANDROID_KEY_ALIAS         (= upload)
+#              ANDROID_KEY_PASSWORD      (= ANDROID_KEYSTORE_PASSWORD, PKCS12 ใช้รหัสเดียวกัน)
+#   Secrets    SENTRY_DSN                (มีอยู่แล้วจาก Frontend CI, ไม่ตั้งก็ได้)
+#
+# ── Release signing key (สร้างครั้งเดียว ใช้ตลอดไป) ─────────────────────────
+# Android ยอมให้ติดตั้งแอปทับเวอร์ชันเก่าได้ก็ต่อเมื่อ APK ถูก sign ด้วย key
+# ตัวเดิมทุกครั้ง key นี้จึงต้องเป็นตัวเดียวกันตลอดอายุแอป
+#
+# - สร้างเมื่อ 2026-10-04 ด้วย:
+#     keytool -genkeypair -v -storetype PKCS12 -keystore upload-keystore.jks \
+#       -alias upload -keyalg RSA -keysize 2048 -validity 10000
+# - SHA-256 ของ certificate (ไว้ตรวจว่าเป็น key ตัวเดิม: keytool -list -v):
+#     FE:71:6B:54:34:62:BD:EA:0B:8A:31:5F:1B:8E:14:E1:B3:02:AE:8D:D4:68:6C:F2:0C:F7:65:1C:AF:08:23:C6
+# - ไฟล์ key + รหัสผ่าน อยู่นอก repo กับผู้ดูแล (ไม่ commit เด็ดขาด
+#   frontend/android/.gitignore กัน *.jks และ key.properties ไว้แล้ว)
+# - ถ้าไฟล์ key หรือรหัสผ่านหาย → ออกอัปเดตทับแอปเดิมไม่ได้อีกเลย ผู้ใช้ทุกคน
+#   ต้องลบแอปแล้วลงใหม่ ห้ามสร้าง key ใหม่มาแทนถ้ายังมีตัวเดิมอยู่
+# - build ในเครื่อง: วาง upload-keystore.jks + key.properties ไว้ใน
+#   frontend/android/ แล้ว `flutter build apk --release` จะ sign ด้วย key นี้
+#   ถ้าไม่มีไฟล์ จะใช้ debug key แทน (ดู android/app/build.gradle.kts)
+#
+# ถ้า secrets ข้างบนยังไม่ได้ตั้ง workflow ยังรันได้ แต่จะ sign ด้วย debug key
+# ที่สุ่มใหม่ทุกรอบ → ติดตั้งทับไม่ได้ ต้องลบแอปเก่าก่อน (มี warning ใน log)
+
+on:
+  # Frontend CI รันเฉพาะตอนมีไฟล์ใน frontend/ เปลี่ยน จึงไม่ต้องกรอง path ซ้ำที่นี่
+  workflow_run:
+    workflows: ['Frontend CI']
+    types: [completed]
+    branches: [main]
+  # ปุ่ม Run workflow ในแท็บ Actions สำหรับปล่อยซ้ำเอง ทางนี้ "ข้าม" การรอ CI
+  # จึงควรใช้กับ commit ที่ CI ผ่านแล้วเท่านั้น
+  workflow_dispatch:
+
+permissions:
+  contents: write # สร้าง tag + Release
+
+# รอบใหม่ไม่ยกเลิกรอบที่กำลังปล่อยอยู่ ปล่อยเรียงกันทีละรอบ
+concurrency:
+  group: frontend-release
+  cancel-in-progress: false
+
+jobs:
+  release-apk:
+    # ปล่อยเฉพาะเมื่อ CI ผ่าน และ CI นั้นเกิดจากการ push เข้า main (ไม่ใช่ PR)
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+
+    env:
+      # build commit เดียวกับที่ CI เพิ่งเทสผ่าน ไม่ใช่ main ล่าสุด ณ ตอนนี้
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Check API_DOMAIN is set
+        run: |
+          if [ -z "${{ vars.API_DOMAIN }}" ]; then
+            echo "::error::Repository variable API_DOMAIN is not set — the APK would have no backend to talk to."
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # versionName มาจาก pubspec.yaml (เช่น 1.0.0) ส่วน versionCode ใช้
+      # run_number ที่เพิ่มขึ้นทุกรอบ → Android ยอมให้ติดตั้งทับเวอร์ชันก่อนหน้า
+      - name: Compute version
+        id: ver
+        run: |
+          name=$(grep -E '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*([^+]+).*/\1/')
+          code=${{ github.run_number }}
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          echo "tag=v$name-build.$code" >> "$GITHUB_OUTPUT"
+
+      - name: Set up release signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 not set — signing with a throwaway debug key. Users must uninstall the old app before installing this one."
+            exit 0
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+          {
+            echo "storeFile=upload-keystore.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/key.properties
+
+      - name: Build release APK
+        run: |
+          flutter build apk --release \
+            --build-name=${{ steps.ver.outputs.name }} \
+            --build-number=${{ steps.ver.outputs.code }} \
+            --dart-define=API_BASE_URL=https://${{ vars.API_DOMAIN }} \
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
+            --dart-define=SENTRY_ENVIRONMENT=production \
+            --dart-define=SENTRY_RELEASE=${{ env.SHA }}
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             "build/poonsuk-resort-${{ steps.ver.outputs.tag }}.apk"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          target_commitish: ${{ env.SHA }}
+          name: Poonsuk Resort ${{ steps.ver.outputs.name }} (build ${{ steps.ver.outputs.code }})
+          generate_release_notes: true
+          make_latest: true
+          files: frontend/build/poonsuk-resort-${{ steps.ver.outputs.tag }}.apk
+          fail_on_unmatched_files: true
+
+      - name: Remove signing key from runner
+        if: always()
+        run: rm -f android/upload-keystore.jks android/key.properties
