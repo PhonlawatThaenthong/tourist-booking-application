@@ -2,6 +2,7 @@
 library;
 export 'auth_repository.dart';
 export 'booking_repository.dart';
+export 'chatbot_repository.dart';
 export 'payment_repository.dart';
 export 'report_repository.dart';
 export 'repository_exception.dart';
