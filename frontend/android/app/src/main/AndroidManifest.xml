@@ -3,7 +3,7 @@
          the debug/profile manifests, so without it a release APK is offline. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="hotel_booking"
+        android:label="Poonsuk Resort"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

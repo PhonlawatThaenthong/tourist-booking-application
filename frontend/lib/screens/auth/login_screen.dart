@@ -43,11 +43,6 @@ class _LoginScreenState extends State<LoginScreen> {
     // On success, SplashScreen reacts to the auth change and routes onward.
   }
 
-  void _fill(String email, String password) {
-    _emailCtrl.text = email;
-    _passwordCtrl.text = password;
-  }
-
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
@@ -165,8 +160,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       child: const Text("Don't have an account? Sign up"),
                     ),
-                    const SizedBox(height: 8),
-                    _DemoCredentials(onPick: _fill),
                   ],
                 ),
               ),
@@ -174,55 +167,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-      ),
-    );
-  }
-}
-
-/// Quick-fill buttons so reviewers can try each role without typing.
-class _DemoCredentials extends StatelessWidget {
-  final void Function(String email, String password) onPick;
-  const _DemoCredentials({required this.onPick});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      color: Colors.teal.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Demo accounts',
-              style: Theme.of(
-                context,
-              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                ActionChip(
-                  avatar: const Icon(Icons.person, size: 18),
-                  label: const Text('Customer'),
-                  onPressed: () => onPick('customer@hotel.com', 'customer123'),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.badge, size: 18),
-                  label: const Text('Staff'),
-                  onPressed: () => onPick('staff@hotel.com', 'staff123'),
-                ),
-                ActionChip(
-                  avatar: const Icon(Icons.admin_panel_settings, size: 18),
-                  label: const Text('Admin'),
-                  onPressed: () => onPick('admin@hotel.com', 'admin123'),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

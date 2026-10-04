@@ -112,7 +112,7 @@ sentry:
 # package_name / bundle_id must match applicationId (android/app/build.gradle.kts)
 # and PRODUCT_BUNDLE_IDENTIFIER (ios/Runner.xcodeproj) respectively.
 patrol:
-  app_name: hotel_booking
+  app_name: Poonsuk Resort
   android:
     package_name: com.example.hotel_booking
   ios:
