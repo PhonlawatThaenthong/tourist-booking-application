@@ -173,9 +173,24 @@ SENTRY_DSN=
 BACKUP_BUCKET=
 ```
 
+**ห้ามใส่ข้อความ `<openssl rand ...>` ลงไปตรง ๆ** ให้รัน `openssl rand -hex 24` (หรือ 32) แล้วนำผลลัพธ์มาใส่ หรือสร้างให้ทีเดียวหลังบันทึกไฟล์
+
+```bash
+sudo -i; cd /opt/poonsuk
+for K in DB_PASSWORD REDIS_PASSWORD; do sed -i "s|^$K=.*|$K=$(openssl rand -hex 24)|" .env; done
+for K in JWT_ACCESS_SECRET JWT_REFRESH_SECRET; do sed -i "s|^$K=.*|$K=$(openssl rand -hex 32)|" .env; done
+grep -nE 'openssl|your-project|<PromptPay' .env || echo "ok: no placeholders"
+```
+
 ไม่ต้องใส่ `NODE_ENV`, `DB_HOST`, `DB_PORT`, `REDIS_URL`, `UPLOAD_DIR`, `TRUST_PROXY` เพราะ `docker-compose.prod.yml` กำหนดให้แล้ว
 
-`DB_PASSWORD` ถูกใช้ตอนสร้าง volume `pgdata` ครั้งแรกเท่านั้น ถ้าเปลี่ยนภายหลังต้อง `ALTER USER` ใน Postgres ด้วย
+`DB_PASSWORD` ถูกใช้ตอนสร้าง volume `pgdata` ครั้งแรกเท่านั้น ถ้าเปลี่ยนภายหลังต้องเปลี่ยนใน Postgres ด้วย (ไม่ต้องรู้รหัสเก่า)
+
+```bash
+NEW=$(grep '^DB_PASSWORD=' .env | cut -d= -f2-)
+IMAGE_TAG=x docker compose -p poonsuk -f docker-compose.prod.yml exec -T postgres \
+  psql -U poonsuk -d poonsuk -c "ALTER USER poonsuk PASSWORD '$NEW';"
+```
 
 ## 8. Deploy service account + Workload Identity Federation
 
@@ -260,7 +275,11 @@ gcloud compute ssh poonsuk-api --zone=asia-southeast1-b --tunnel-through-iap -- 
 ```powershell
 # หน้าต่างที่ 2 (PowerShell ที่ backend\) ใช้รหัสจาก .env ของ VM
 $env:DB_PORT="5434"; $env:DB_PASSWORD="<DB_PASSWORD ของ production>"
-npm run seed:rooms; npm run seed:users; npm run seed:restaurants
+npm run seed:rooms; npm run seed:restaurants
+
+# บัญชี admin คนแรก (ไม่มีบัญชี demo แล้ว รหัสต้องยาวอย่างน้อย 12 ตัว)
+$env:SEED_ADMIN_EMAIL="you@example.com"; $env:SEED_ADMIN_PASSWORD="<รหัสที่แข็งแรง>"
+npm run seed:admin
 ```
 
 ## 11. Flutter
@@ -279,10 +298,13 @@ flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
 
 ```bash
 gcloud compute ssh poonsuk-api --zone=asia-southeast1-b --tunnel-through-iap
+sudo -i                               # /opt/poonsuk เป็นของ root (chmod 750)
 cd /opt/poonsuk
-sudo docker compose -p poonsuk -f docker-compose.prod.yml ps
-sudo docker compose -p poonsuk -f docker-compose.prod.yml logs -f --tail=100 api
 cat .deployed-tag                     # commit ที่ขึ้นอยู่ตอนนี้
+# compose บังคับให้มี IMAGE_TAG ทุกคำสั่ง (deploy.sh เป็นคน export ให้ตอน deploy)
+export IMAGE_TAG=$(cat .deployed-tag)
+docker compose -p poonsuk -f docker-compose.prod.yml ps
+docker compose -p poonsuk -f docker-compose.prod.yml logs -f --tail=100 api
 ```
 
 ### Rollback
@@ -298,8 +320,10 @@ sudo /opt/poonsuk/deploy.sh <commit-sha-เก่า>
 ย้อนฐานข้อมูล (ทำเมื่อ migration ทำข้อมูลเสียเท่านั้น และข้อมูลหลังเวลา dump จะหายไป)
 
 ```bash
+sudo -i
 cd /opt/poonsuk
-C="sudo docker compose -p poonsuk -f docker-compose.prod.yml"
+export IMAGE_TAG=$(cat .deployed-tag)
+C="docker compose -p poonsuk -f docker-compose.prod.yml"
 $C stop api
 $C exec -T postgres sh -c 'pg_restore --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backups/pre-xxxx.dump
 sudo /opt/poonsuk/deploy.sh <commit-sha-ที่ตรงกับ schema ใน dump>

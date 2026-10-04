@@ -13,7 +13,7 @@ import { RESTAURANTS } from './restaurants.data';
  * again as more arrive. Re-running replaces photos already uploaded.
  *
  * Env: API_URL (default http://localhost:3000), and an admin or staff login in
- * SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD (default: the demo admin account).
+ * SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD (required; an admin made with npm run seed:admin).
  *
  * Usage: npm run upload:restaurant-photos
  */
@@ -32,13 +32,21 @@ async function api<T>(path: string, init: RequestInit): Promise<T> {
   return body as T;
 }
 
+// No fallback credentials: the old admin@hotel.com/admin123 default no longer
+// exists (see create-admin.ts), so a missing value must fail loudly.
+function requiredEnv(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`${name} is not set`);
+  return value;
+}
+
 async function main(): Promise<void> {
   const { accessToken } = await api<{ accessToken: string }>('/api/auth/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      email: process.env.SEED_ADMIN_EMAIL ?? 'admin@hotel.com',
-      password: process.env.SEED_ADMIN_PASSWORD ?? 'admin123',
+      email: requiredEnv('SEED_ADMIN_EMAIL'),
+      password: requiredEnv('SEED_ADMIN_PASSWORD'),
     }),
   });
 

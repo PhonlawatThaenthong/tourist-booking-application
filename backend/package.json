@@ -17,7 +17,7 @@
     "migration:revert": "npm run typeorm -- migration:revert",
     "migration:run:prod": "typeorm migration:run -d dist/config/data-source.js",
     "seed:rooms": "ts-node src/database/seed-rooms.ts",
-    "seed:users": "ts-node src/database/seed-users.ts",
+    "seed:admin": "ts-node src/database/create-admin.ts",
     "seed:restaurants": "ts-node src/database/seed-restaurants.ts",
     "upload:restaurant-photos": "ts-node src/database/upload-restaurant-photos.ts",
     "mail:test": "ts-node src/scripts/send-test-mail.ts"
