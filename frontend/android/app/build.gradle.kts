@@ -25,6 +25,10 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // Required by the ota_update plugin (in-app update), which is built
+        // with core library desugaring: Android refuses to build an app that
+        // depends on such a library unless the app enables it as well.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -77,6 +81,9 @@ dependencies {
     // Patrol: runs each instrumentation test in isolation (see
     // testOptions.execution above) and lets `clearPackageData` work.
     androidTestUtil("androidx.test:orchestrator:1.6.1")
+    // Pairs with isCoreLibraryDesugaringEnabled above; same version the
+    // ota_update plugin itself uses.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
 
 kotlin {
