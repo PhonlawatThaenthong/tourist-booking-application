@@ -157,7 +157,8 @@ jobs:
           path: |
             ~/.android/avd/*
             ~/.android/adb*
-          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64
+          # เปลี่ยน ram/heap/cores แล้วต้องเปลี่ยน key ไม่งั้นได้ AVD เก่าจาก cache
+          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64-ram4g-v2
 
       - name: Create AVD snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -167,6 +168,11 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          # debug APK ของ Flutter (JIT) + swiftshader กิน RAM มาก — ค่า default
+          # ทำให้ instrumentation process ถูก kill กลางเทสต์ยาว ๆ ได้
+          ram-size: 4096M
+          heap-size: 576M
+          cores: 4
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -179,12 +185,21 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          # debug APK ของ Flutter (JIT) + swiftshader กิน RAM มาก — ค่า default
+          # ทำให้ instrumentation process ถูก kill กลางเทสต์ยาว ๆ ได้
+          ram-size: 4096M
+          heap-size: 576M
+          cores: 4
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           working-directory: frontend
           # action รันแต่ละบรรทัดของ script แยก shell — ใช้ >- พับให้เป็นคำสั่งเดียว
+          # logcat เก็บลงไฟล์คู่ขนาน — ถ้า "Test instrumentation process crashed"
+          # สาเหตุ (FATAL EXCEPTION / lowmemorykiller) จะอยู่ใน logcat.txt ใน artifact
           script: >-
+            adb logcat -c;
+            adb logcat -v threadtime > "$GITHUB_WORKSPACE/logcat.txt" 2>&1 &
             patrol test --verbose
             --dart-define=API_BASE_URL=http://10.0.2.2:3000
             --dart-define=E2E_CUSTOMER_EMAIL=${{ env.E2E_CUSTOMER_EMAIL }}
@@ -201,5 +216,6 @@ jobs:
             frontend/build/app/reports/androidTests/
             frontend/build/app/outputs/androidTest-results/
             backend/backend.log
+            logcat.txt
           if-no-files-found: warn
           retention-days: 14
