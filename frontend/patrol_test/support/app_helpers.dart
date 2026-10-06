@@ -2,9 +2,15 @@
 //
 // These tests run against the REAL NestJS backend. Before `patrol test`:
 //   1. Start the API (and its DB/Redis) so the emulator can reach it.
-//   2. Seed the demo data:  npm run seed:users && npm run seed:rooms
+//   2. Seed rooms (npm run seed:rooms) and create the two test accounts
+//      below. seed:users no longer exists, so register them through the API
+//      and promote the staff one — the CI workflow does exactly this, see
+//      .github/workflows/frontend-e2e.yml ("Create e2e accounts").
 //   3. Point the app at the host machine from the emulator:
 //        patrol test --dart-define=API_BASE_URL=http://10.0.2.2:3000
+//
+// The account credentials default to the values below and can be overridden
+// with --dart-define=E2E_CUSTOMER_EMAIL=... (and _PASSWORD, E2E_STAFF_*).
 //
 // Each test starts from a clean install (clearPackageData=true in
 // build.gradle.kts), so every test launches the app signed out.
@@ -20,15 +26,23 @@ import 'package:hotel_booking/screens/auth/login_screen.dart';
 /// time than Patrol's default wait.
 const netTimeout = Duration(seconds: 20);
 
-/// Accounts created by `npm run seed:users` in the backend.
+/// Test accounts the suite signs in with. They must already exist in the
+/// backend (see the header comment).
 class DemoAccount {
   const DemoAccount(this.email, this.password);
   final String email;
   final String password;
 }
 
-const customerAccount = DemoAccount('customer@hotel.com', 'customer123');
-const staffAccount = DemoAccount('staff@hotel.com', 'staff123');
+const customerAccount = DemoAccount(
+  String.fromEnvironment('E2E_CUSTOMER_EMAIL',
+      defaultValue: 'customer@hotel.com'),
+  String.fromEnvironment('E2E_CUSTOMER_PASSWORD', defaultValue: 'customer123'),
+);
+const staffAccount = DemoAccount(
+  String.fromEnvironment('E2E_STAFF_EMAIL', defaultValue: 'staff@hotel.com'),
+  String.fromEnvironment('E2E_STAFF_PASSWORD', defaultValue: 'staff123'),
+);
 
 /// Boots the real app and waits until the signed-out login screen is shown.
 Future<void> launchApp(PatrolIntegrationTester $) async {
