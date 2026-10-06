@@ -1,4 +1,4 @@
-package com.example.hotel_booking;
+package com.poonsuk.resort;
 
 import androidx.test.platform.app.InstrumentationRegistry;
 import org.junit.Test;

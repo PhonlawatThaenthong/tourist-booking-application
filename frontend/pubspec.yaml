@@ -115,7 +115,7 @@ sentry:
 patrol:
   app_name: Poonsuk Resort
   android:
-    package_name: com.example.hotel_booking
+    package_name: com.poonsuk.resort
   ios:
     bundle_id: com.example.hotelBooking
 

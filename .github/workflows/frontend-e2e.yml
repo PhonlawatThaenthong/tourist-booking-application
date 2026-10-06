@@ -1,0 +1,205 @@
+name: Frontend E2E (Patrol)
+
+# Patrol e2e บน Android emulator ต่อ backend จริง (NestJS + Postgres + Redis)
+# ใช้เวลาราว 15–25 นาที (บูต emulator + build APK สองตัว)
+#
+# รันเฉพาะตอนกดเองเท่านั้น: แท็บ Actions → Frontend E2E (Patrol) → Run workflow
+# แล้วเลือก branch ที่จะทดสอบในช่อง "Use workflow from"
+# ไม่ผูกกับ push / PR / CI / CD ใด ๆ
+on:
+  workflow_dispatch:
+
+# กดซ้ำบน branch เดิมระหว่างที่รอบเก่ายังรันอยู่ → ยกเลิกรอบเก่า
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  API_LEVEL: 34
+  # บัญชีทดสอบ — สร้างใหม่ทุกรอบใน DB ของ service container ที่ทิ้งหลังจบ job
+  # ไม่ใช่ความลับ ไม่เกี่ยวกับ production
+  E2E_CUSTOMER_EMAIL: customer@hotel.com
+  E2E_CUSTOMER_PASSWORD: customer123
+  E2E_STAFF_EMAIL: staff@hotel.com
+  E2E_STAFF_PASSWORD: staff123
+
+jobs:
+  patrol-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: poonsuk
+          POSTGRES_PASSWORD: poonsuk_dev_password
+          POSTGRES_DB: poonsuk
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U poonsuk"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------------- Backend ----------------
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Build backend
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Migrate, seed rooms, start API
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          PORT: 3000
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: poonsuk
+          DB_PASSWORD: poonsuk_dev_password
+          DB_NAME: poonsuk
+          REDIS_URL: redis://localhost:6379
+          JWT_ACCESS_SECRET: ci-only-not-a-real-secret
+          JWT_REFRESH_SECRET: ci-only-not-a-real-refresh-secret
+          JWT_ACCESS_TTL: 15m
+          JWT_REFRESH_TTL_DAYS: 30
+          # SMTP_HOST ว่าง = log รหัส reset ลง console (ดูได้ใน backend.log)
+          SMTP_HOST: ''
+          RESET_TOKEN_TTL_MINUTES: 15
+          UPLOAD_DIR: ./uploads
+          BOOKING_HOLD_MINUTES: 3
+        run: |
+          npm run migration:run
+          npm run seed:rooms
+          mkdir -p uploads/slips
+          # emulator มองเห็นเครื่อง host ที่ 10.0.2.2 — API ต้อง listen 0.0.0.0 (main.ts ทำอยู่แล้ว)
+          nohup node dist/main.js > backend.log 2>&1 &
+          curl --silent --fail --retry 30 --retry-delay 2 --retry-all-errors \
+            http://localhost:3000/health/ready
+          echo
+          echo "API is ready"
+
+      # seed:users ถูกถอดออกแล้ว (ไม่ให้มีรหัสผ่านใน repo) → สมัครผ่าน API จริงแทน
+      # แล้วยก role ของ staff ใน DB ตรง ๆ เพราะ API ไม่มีทางสมัครเป็น staff
+      - name: Create e2e accounts
+        env:
+          PGPASSWORD: poonsuk_dev_password
+        run: |
+          register() {
+            curl --silent --show-error --fail-with-body \
+              -H 'Content-Type: application/json' \
+              -d "{\"name\":\"$1\",\"email\":\"$2\",\"password\":\"$3\"}" \
+              http://localhost:3000/api/auth/register > /dev/null
+          }
+          register "E2E Customer" "$E2E_CUSTOMER_EMAIL" "$E2E_CUSTOMER_PASSWORD"
+          register "E2E Staff"    "$E2E_STAFF_EMAIL"    "$E2E_STAFF_PASSWORD"
+          psql -h localhost -U poonsuk -d poonsuk -v ON_ERROR_STOP=1 -c \
+            "UPDATE users SET role = 'staff' WHERE LOWER(email) = LOWER('$E2E_STAFF_EMAIL');"
+
+      # ---------------- Flutter + Patrol ----------------
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            frontend/android/*.gradle*
+            frontend/android/app/*.gradle*
+            frontend/android/gradle/wrapper/gradle-wrapper.properties
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # patrol 4.10.x ต้องใช้ patrol_cli >= 4.7.0 (patrol.leancode.co/compatibility-table)
+      - name: Install Patrol CLI
+        run: |
+          dart pub global activate patrol_cli '>=4.7.0 <5.0.0'
+          echo "$HOME/.pub-cache/bin" >> "$GITHUB_PATH"
+
+      - name: flutter pub get
+        working-directory: frontend
+        run: flutter pub get
+
+      # emulator x86_64 ต้องใช้ KVM — ubuntu runner มีให้ แต่ต้องเปิดสิทธิ์เอง
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Cache AVD
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64
+
+      - name: Create AVD snapshot
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "AVD snapshot created"
+
+      - name: Run Patrol tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ env.API_LEVEL }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          working-directory: frontend
+          # action รันแต่ละบรรทัดของ script แยก shell — ใช้ >- พับให้เป็นคำสั่งเดียว
+          script: >-
+            patrol test --verbose
+            --dart-define=API_BASE_URL=http://10.0.2.2:3000
+            --dart-define=E2E_CUSTOMER_EMAIL=${{ env.E2E_CUSTOMER_EMAIL }}
+            --dart-define=E2E_CUSTOMER_PASSWORD=${{ env.E2E_CUSTOMER_PASSWORD }}
+            --dart-define=E2E_STAFF_EMAIL=${{ env.E2E_STAFF_EMAIL }}
+            --dart-define=E2E_STAFF_PASSWORD=${{ env.E2E_STAFF_PASSWORD }}
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: patrol-reports
+          path: |
+            frontend/build/app/reports/androidTests/
+            frontend/build/app/outputs/androidTest-results/
+            backend/backend.log
+          if-no-files-found: warn
+          retention-days: 14
