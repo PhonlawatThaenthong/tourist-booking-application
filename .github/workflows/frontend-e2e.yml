@@ -158,7 +158,7 @@ jobs:
             ~/.android/avd/*
             ~/.android/adb*
           # เปลี่ยน ram/heap/cores แล้วต้องเปลี่ยน key ไม่งั้นได้ AVD เก่าจาก cache
-          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64-ram4g-v2
+          key: avd-${{ env.API_LEVEL }}-google_apis-x86_64-ram4g-2core-v3
 
       - name: Create AVD snapshot
         if: steps.avd-cache.outputs.cache-hit != 'true'
@@ -170,9 +170,12 @@ jobs:
           profile: pixel_6
           # debug APK ของ Flutter (JIT) + swiftshader กิน RAM มาก — ค่า default
           # ทำให้ instrumentation process ถูก kill กลางเทสต์ยาว ๆ ได้
+          # cores: 2 ไม่ใช่ 4 — runner มี 4 vCPU และต้องแบ่งให้ Postgres, Redis,
+          # API และ Gradle ด้วย ให้ emulator 4 core แล้ว booking test ช้าจาก
+          # ~30s เป็น 454s (CPU แย่งกันจน instrumentation crash)
           ram-size: 4096M
           heap-size: 576M
-          cores: 4
+          cores: 2
           force-avd-creation: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: false
@@ -187,9 +190,12 @@ jobs:
           profile: pixel_6
           # debug APK ของ Flutter (JIT) + swiftshader กิน RAM มาก — ค่า default
           # ทำให้ instrumentation process ถูก kill กลางเทสต์ยาว ๆ ได้
+          # cores: 2 ไม่ใช่ 4 — runner มี 4 vCPU และต้องแบ่งให้ Postgres, Redis,
+          # API และ Gradle ด้วย ให้ emulator 4 core แล้ว booking test ช้าจาก
+          # ~30s เป็น 454s (CPU แย่งกันจน instrumentation crash)
           ram-size: 4096M
           heap-size: 576M
-          cores: 4
+          cores: 2
           force-avd-creation: false
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
