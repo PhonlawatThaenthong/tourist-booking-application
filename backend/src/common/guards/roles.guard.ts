@@ -15,7 +15,7 @@ export class RolesGuard implements CanActivate {
     ]);
     if (!required || required.length === 0) return true;
 
-    const user: JwtPayload | undefined = ctx.switchToHttp().getRequest().user;
+    const user = ctx.switchToHttp().getRequest<{ user?: JwtPayload }>().user;
     if (!user || !required.includes(user.role)) {
       throw new ForbiddenException('ไม่มีสิทธิ์เข้าถึงทรัพยากรนี้');
     }

@@ -15,10 +15,10 @@ export class CreateBookingDto {
   @IsUUID()
   roomId!: string;
 
-  @IsDateString({ strict: true } as never, { message: 'checkIn ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
+  @IsDateString({ strict: true }, { message: 'checkIn ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
   checkIn!: string;
 
-  @IsDateString({ strict: true } as never, { message: 'checkOut ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
+  @IsDateString({ strict: true }, { message: 'checkOut ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
   checkOut!: string;
 
   @Type(() => Number) @IsInt() @Min(1) @Max(20)

@@ -86,9 +86,8 @@ class HotelBookingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Single wiring point for the data layer. Auth, rooms and bookings now talk
-    // to the NestJS API; restaurants stay on mock data until `/api/restaurants`
-    // exists.
+    // Single wiring point for the data layer. Every repository talks to the
+    // NestJS API.
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider<AuthRepository>(

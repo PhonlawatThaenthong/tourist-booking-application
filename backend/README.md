@@ -8,10 +8,10 @@ full architecture design.
 
 | Sprint | Scope | Status |
 |---|---|---|
-| 1 | Auth vertical slice (users, refresh_tokens, JWT, guards, health, Docker) | scaffolded |
-| 2 | Rooms + Bookings, exclusion constraint, concurrency test | not started |
-| 3 | Redis cache / lock, BullMQ notifications, payments | not started |
-| 4 | Nginx LB, read-replica, observability | not started |
+| 1 | Auth vertical slice (users, refresh_tokens, JWT, guards, health, Docker) | done |
+| 2 | Rooms + Bookings, exclusion constraint, concurrency test | done |
+| 3 | Redis cache / lock, BullMQ notifications, payments | done |
+| 4 | Nginx LB, read-replica, observability | partial: Nginx reverse proxy + Sentry done; single API instance, no read-replica |
 
 ## Run locally
 

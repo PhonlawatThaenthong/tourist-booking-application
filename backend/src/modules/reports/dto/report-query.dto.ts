@@ -7,11 +7,11 @@ const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
  * all of October) — unlike a booking's check-out, which is exclusive.
  */
 export class ReportRangeDto {
-  @IsDateString({ strict: true } as never, { message: 'from ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
+  @IsDateString({ strict: true }, { message: 'from ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
   @Matches(DATE_ONLY, { message: 'from ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
   from!: string;
 
-  @IsDateString({ strict: true } as never, { message: 'to ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
+  @IsDateString({ strict: true }, { message: 'to ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
   @Matches(DATE_ONLY, { message: 'to ต้องอยู่ในรูปแบบ YYYY-MM-DD' })
   to!: string;
 }

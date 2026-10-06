@@ -4,6 +4,10 @@
 
 .DS_Store
 *.log
+
+# Device / build logs dumped during debugging
+frontend/crash_log.txt
+frontend/full_log.txt
 .claude/
 *.docx
 .env

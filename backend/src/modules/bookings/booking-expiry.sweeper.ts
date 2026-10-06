@@ -43,7 +43,7 @@ export class BookingExpirySweeper implements OnModuleInit, OnModuleDestroy {
     // Compute the cutoff in JS instead of with SQL make_interval — avoids any
     // bound-parameter type ambiguity, and compares timestamptz to timestamptz.
     const cutoff = new Date(Date.now() - getBookingHoldMs());
-    const result = await this.dataSource.query(
+    const result: unknown = await this.dataSource.query(
       `UPDATE bookings b
           SET status = 'cancelled', updated_at = now()
         WHERE b.status = 'pending'
@@ -55,7 +55,7 @@ export class BookingExpirySweeper implements OnModuleInit, OnModuleDestroy {
           )`,
       [cutoff],
     );
-    const count = Array.isArray(result) ? result[1] : undefined;
+    const count: unknown = Array.isArray(result) ? result[1] : undefined;
     if (typeof count === 'number' && count > 0) {
       this.logger.log(`released ${count} expired booking hold(s)`);
       await this.cache.invalidate(ROOMS_CACHE_NAMESPACE);

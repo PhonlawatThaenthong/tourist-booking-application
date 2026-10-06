@@ -42,7 +42,7 @@ See `backend/README.md` for endpoints and conventions.
 | Sprint | Scope | Status |
 |---|---|---|
 | 0 | Repository abstraction in the Flutter app | done |
-| 1 | Backend auth vertical slice | scaffolded |
-| 2 | Rooms + bookings, double-booking prevention | not started |
-| 3 | Flutter switches to the real API | not started |
-| 4 | Redis, BullMQ, payments, load balancing, observability | not started |
+| 1 | Backend auth vertical slice | done |
+| 2 | Rooms + bookings, double-booking prevention | done |
+| 3 | Flutter switches to the real API | done |
+| 4 | Redis, BullMQ, payments, load balancing, observability | partial: Redis, BullMQ, payments, Nginx and Sentry done; single API instance, no load balancing yet |

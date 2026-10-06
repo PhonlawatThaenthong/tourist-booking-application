@@ -6,7 +6,7 @@ export type ChatbotLanguage = (typeof CHATBOT_LANGUAGES)[number];
 
 export class ChatbotQueryDto {
   // Trimmed first so a whitespace-only message is rejected as empty.
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsString() @IsNotEmpty() @MaxLength(1000)
   message!: string;
 

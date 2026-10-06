@@ -120,7 +120,7 @@ export class RedisCacheService {
   private markUnhealthy(err: unknown): void {
     if (!this.healthy) return;
     this.healthy = false;
-    this.logger.warn(`Redis cache unavailable, reading from Postgres directly: ${err}`);
+    this.logger.warn(`Redis cache unavailable, reading from Postgres directly: ${String(err)}`);
   }
 
   private markHealthy(): void {

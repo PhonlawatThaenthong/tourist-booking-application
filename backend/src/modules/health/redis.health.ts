@@ -37,7 +37,7 @@ export class RedisHealthIndicator extends HealthIndicator implements OnModuleDes
     }
   }
 
-  async onModuleDestroy(): Promise<void> {
+  onModuleDestroy(): void {
     this.client.disconnect();
   }
 }

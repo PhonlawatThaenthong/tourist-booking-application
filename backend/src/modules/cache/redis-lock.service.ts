@@ -129,7 +129,7 @@ export class RedisLockService {
   private markUnhealthy(err: unknown): void {
     if (!this.healthy) return;
     this.healthy = false;
-    this.logger.warn(`Redis lock unavailable, continuing without it (Postgres still guards): ${err}`);
+    this.logger.warn(`Redis lock unavailable, continuing without it (Postgres still guards): ${String(err)}`);
   }
 
   private markHealthy(): void {
