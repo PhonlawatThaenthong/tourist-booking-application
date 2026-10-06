@@ -71,6 +71,22 @@ class AppConfig {
   /// update check off — a dev build must never offer to replace itself.
   static const int appBuild = int.fromEnvironment('APP_BUILD');
 
+  /// Version name of this APK (the `1.0.0` of `v1.0.0-build.N`). The release
+  /// pipeline compiles in the value from pubspec.yaml; the default only shows
+  /// up in dev builds.
+  static const String appVersion = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: '1.0.0',
+  );
+
+  /// What the About row shows, e.g. `v1.0.0 (build 12)` — the same name the
+  /// release carries on GitHub, so a user can tell which APK they have.
+  static String get versionLabel => versionLabelFor(appVersion, appBuild);
+
+  /// Build 0 means a dev/CI build (see [appBuild]).
+  static String versionLabelFor(String version, int build) =>
+      build > 0 ? 'v$version (build $build)' : 'v$version (dev build)';
+
   /// GitHub repository whose Releases hold the APKs (owner/name). Public, so
   /// the app can read the latest release without a token.
   static const String releasesRepo = String.fromEnvironment(
