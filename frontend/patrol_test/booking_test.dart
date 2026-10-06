@@ -36,7 +36,10 @@ void main() {
 
   patrolTest('booking: customer books a room and sees it pending', ($) async {
     final stay = randomFutureStay();
-    final dateLine = '${Format.date(stay.start)} → ${Format.date(stay.end)}';
+    // My bookings shows the stay as separate Check-in / Check-out lines
+    // (see _BookingTile in my_bookings_screen.dart), not one "a → b" range.
+    final checkInLine = 'Check-in: ${Format.checkIn(stay.start)}';
+    final checkOutLine = 'Check-out: ${Format.checkOut(stay.end)}';
 
     await launchApp($);
     await signInAsCustomer($);
@@ -79,7 +82,10 @@ void main() {
 
     // 6. My bookings lists the new booking as Pending / Unpaid.
     await $('Bookings').tap();
-    final card = $(Card).containing(dateLine).containing(room.name);
+    final card = $(Card)
+        .containing(checkInLine)
+        .containing(checkOutLine)
+        .containing(room.name);
     await $('My bookings').waitUntilVisible();
     await card.waitUntilExists(timeout: netTimeout);
     await card.scrollTo();

@@ -245,6 +245,12 @@ flowchart LR
 
 | Workflow | ทำงานเมื่อ | ทำอะไร |
 |---|---|---|
+| 0 | Repository abstraction in the Flutter app | done |
+| 1 | Backend auth vertical slice | done |
+| 2 | Rooms + bookings, double-booking prevention | done |
+| 3 | Flutter switches to the real API | done |
+| 4 | Redis, BullMQ, payments, load balancing, observability | partial: Redis, BullMQ, payments, Nginx and Sentry done; single API instance, no load balancing yet |
+=======
 | **Backend CI** | push ที่แก้ `backend/` ทุก branch และ PR เข้า `main` | build, unit test, e2e test กับ Postgres + Redis |
 | **Backend CD** | Backend CI ผ่านบน `main` | build Docker image แล้ว deploy ขึ้น VM รัน migration และ health check ถ้าไม่ผ่านจะย้อนกลับเวอร์ชันเดิม |
 | **Frontend CI** | push ที่แก้ `frontend/` ทุก branch และ PR เข้า `main` | `flutter analyze`, `flutter test`, build APK |

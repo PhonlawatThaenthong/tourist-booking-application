@@ -85,7 +85,7 @@ export class ReportsService {
       [q.from, q.to, groupBy],
     );
 
-    const [{ count }] = await this.ds.query(
+    const [{ count }] = await this.ds.query<Array<{ count: number }>>(
       `SELECT count(*)::int AS count FROM bookings
        WHERE payment_status = 'paid' AND check_in <= $2::date AND check_out > $1::date`,
       [q.from, q.to],

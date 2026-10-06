@@ -9,9 +9,9 @@ export class UpdateBookingDto {
   @IsOptional() @IsEnum(BookingStatus)
   status?: BookingStatus;
 
-  @IsOptional() @IsDateString({ strict: true } as never)
+  @IsOptional() @IsDateString({ strict: true })
   checkIn?: string;
 
-  @IsOptional() @IsDateString({ strict: true } as never)
+  @IsOptional() @IsDateString({ strict: true })
   checkOut?: string;
 }

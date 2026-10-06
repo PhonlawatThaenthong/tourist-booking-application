@@ -5,6 +5,13 @@ NestJS API ของแอปจองห้องพัก ใช้ PostgreSQL
 > ภาพรวมทั้งโปรเจกต์ วิธีรันทั้งระบบ และ CI/CD อยู่ใน [README หลัก](../README.md)
 > การ deploy ขึ้น Google Cloud อยู่ใน [`deploy/README.md`](../deploy/README.md)
 
+| Sprint | Scope | Status |
+|---|---|---|
+| 1 | Auth vertical slice (users, refresh_tokens, JWT, guards, health, Docker) | done |
+| 2 | Rooms + Bookings, exclusion constraint, concurrency test | done |
+| 3 | Redis cache / lock, BullMQ notifications, payments | done |
+| 4 | Nginx LB, read-replica, observability | partial: Nginx reverse proxy + Sentry done; single API instance, no read-replica |
+=======
 ---
 
 ## สารบัญ

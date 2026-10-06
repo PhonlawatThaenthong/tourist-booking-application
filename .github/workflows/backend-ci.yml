@@ -81,12 +81,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # lint:check ไม่ใส่ --fix — CI ต้องรายงานปัญหา ไม่ใช่แก้เงียบ ๆ
+      - name: Lint
+        run: npm run lint:check
+
       - name: Build
         run: npm run build
 
-      # ยังไม่มีไฟล์ .spec.ts ใน src/ — ปล่อยให้ผ่านไปก่อน แต่ step จะเริ่มเช็คให้เองทันทีที่มี unit test ตัวแรก
       - name: Unit tests
-        run: npm test -- --passWithNoTests
+        run: npm test
 
       # synchronize: false ถาวร → schema ต้องมาจาก migration เท่านั้น
       - name: Run migrations
