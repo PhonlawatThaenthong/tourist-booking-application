@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launch screen ground. Matches the resort logo's own white disc and the
+         Flutter SplashScreen, so the hand-off from the native splash to the
+         first Flutter frame shows no colour change. -->
+    <color name="splash_background">#FFFFFF</color>
+</resources>
