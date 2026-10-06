@@ -92,10 +92,14 @@ class ProfileScreen extends StatelessWidget {
                     ),
                   ),
                   const Divider(height: 1),
-                  const ListTile(
-                    leading: Icon(Icons.info_outline),
-                    title: Text('About'),
-                    subtitle: Text('${AppConfig.hotelName} · v1.0.0'),
+                  // The installed build, not a fixed string: the release
+                  // workflow compiles the version in (AppConfig.versionLabel).
+                  ListTile(
+                    leading: const Icon(Icons.info_outline),
+                    title: const Text('About'),
+                    subtitle: Text(
+                      '${AppConfig.hotelName} · ${AppConfig.versionLabel}',
+                    ),
                   ),
                 ],
               ),

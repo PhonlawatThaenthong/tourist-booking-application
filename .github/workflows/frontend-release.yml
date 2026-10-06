@@ -1,8 +1,23 @@
 name: Frontend Release
 
-# ทุกครั้งที่มีโค้ด frontend เข้า main → รอ "Frontend CI" (analyze + test)
-# ผ่านก่อน → ค่อย build release APK แล้วปล่อยเป็น GitHub Release ใหม่
-# ถ้า CI ไม่ผ่าน จะไม่มี release ออกไป (เหมือน Backend CD ที่รอ Backend CI)
+# ทุกครั้งที่มีโค้ด frontend เข้า main:
+#   1. รอ "Frontend CI" (analyze + test) ผ่านก่อน  — ไม่ผ่าน = ไม่มีอะไรเกิดขึ้น
+#   2. job `build`   : build + sign APK แล้วเก็บเป็น artifact ของ run
+#   3. job `publish` : หยุดรอให้ผู้มีสิทธิ์กด "Review deployments → Approve"
+#                      แล้วจึงปล่อย APK เป็น GitHub Release (= ขึ้น production
+#                      เพราะแอปที่ติดตั้งอยู่จะเด้งชวนอัปเดตทันทีที่ release ออก)
+#
+# ── การอนุมัติก่อนปล่อย ──────────────────────────────────────────────────────
+# job `publish` ผูกกับ environment `production` ตัวเดียวกับ Backend CD
+# ใครอนุมัติได้ ตั้งที่ Settings → Environments → production → Required reviewers
+# (ถ้าเอา reviewer ออก จะกลับเป็นปล่อยอัตโนมัติทันทีหลัง build)
+#
+# - ผู้ review โหลด APK มาลองก่อนได้: หน้า run → Artifacts → release-apk
+# - กด Reject = ไม่มี release ออก (เลข build ของรอบนั้นจะถูกข้ามไป ไม่เป็นไร)
+# - ไม่กดอะไรภายใน 30 วัน run จะหมดอายุเอง
+# - run ปล่อยทีละรอบตามลำดับ (concurrency ด้านล่าง): ถ้ารอบหนึ่งค้างรออนุมัติ
+#   รอบถัดไปจะรอคิว และถ้ามีรอบใหม่กว่าเข้ามาอีก รอบที่รอคิวอยู่จะถูกยกเลิก
+#   เหลือแค่ตัวล่าสุด → อนุมัติหรือ reject รอบที่ค้างก่อน ตัวใหม่จึงเดินต่อ
 #
 # หมายเหตุ: workflow_run จะทำงานก็ต่อเมื่อไฟล์นี้อยู่บน main แล้วเท่านั้น
 #
@@ -45,26 +60,33 @@ on:
   # จึงควรใช้กับ commit ที่ CI ผ่านแล้วเท่านั้น
   workflow_dispatch:
 
+# ค่าเริ่มต้นอ่านอย่างเดียว เฉพาะ job `publish` ที่ได้สิทธิ์เขียน (สร้าง tag + Release)
 permissions:
-  contents: write # สร้าง tag + Release
+  contents: read
 
-# รอบใหม่ไม่ยกเลิกรอบที่กำลังปล่อยอยู่ ปล่อยเรียงกันทีละรอบ
+# รอบใหม่ไม่ยกเลิกรอบที่กำลังปล่อยอยู่ ปล่อยเรียงกันทีละรอบ — สำคัญเพราะถ้าอนุมัติ
+# build เก่า "หลัง" build ใหม่ release เก่าจะกลายเป็น latest แล้วแอปจะไม่เห็นตัวใหม่
 concurrency:
   group: frontend-release
   cancel-in-progress: false
 
+env:
+  # build commit เดียวกับที่ CI เพิ่งเทสผ่าน ไม่ใช่ main ล่าสุด ณ ตอนนี้
+  SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
-  release-apk:
-    # ปล่อยเฉพาะเมื่อ CI ผ่าน และ CI นั้นเกิดจากการ push เข้า main (ไม่ใช่ PR)
+  build:
+    # เฉพาะเมื่อ CI ผ่าน และ CI นั้นเกิดจากการ push เข้า main (ไม่ใช่ PR)
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push')
     runs-on: ubuntu-latest
 
-    env:
-      # build commit เดียวกับที่ CI เพิ่งเทสผ่าน ไม่ใช่ main ล่าสุด ณ ตอนนี้
-      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    outputs:
+      name: ${{ steps.ver.outputs.name }}
+      code: ${{ steps.ver.outputs.code }}
+      tag: ${{ steps.ver.outputs.tag }}
 
     defaults:
       run:
@@ -137,6 +159,7 @@ jobs:
             --build-number=${{ steps.ver.outputs.code }} \
             --dart-define=API_BASE_URL=https://${{ vars.API_DOMAIN }} \
             --dart-define=APP_BUILD=${{ steps.ver.outputs.code }} \
+            --dart-define=APP_VERSION=${{ steps.ver.outputs.name }} \
             --dart-define=RELEASES_REPO=${{ github.repository }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
             --dart-define=SENTRY_ENVIRONMENT=production \
@@ -144,17 +167,44 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk \
              "build/poonsuk-resort-${{ steps.ver.outputs.tag }}.apk"
 
-      - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.ver.outputs.tag }}
-          target_commitish: ${{ env.SHA }}
-          name: Poonsuk Resort ${{ steps.ver.outputs.name }} (build ${{ steps.ver.outputs.code }})
-          generate_release_notes: true
-          make_latest: true
-          files: frontend/build/poonsuk-resort-${{ steps.ver.outputs.tag }}.apk
-          fail_on_unmatched_files: true
-
       - name: Remove signing key from runner
         if: always()
         run: rm -f android/upload-keystore.jks android/key.properties
+
+      # ส่ง APK ที่ sign แล้วต่อให้ job `publish` และให้ผู้ review โหลดไปลองก่อน
+      # อนุมัติได้ เก็บ 30 วัน เท่ากับเวลาที่ run รออนุมัติได้นานที่สุด
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-apk
+          path: frontend/build/poonsuk-resort-${{ steps.ver.outputs.tag }}.apk
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    # จุดหยุดรออนุมัติ: GitHub จะไม่เริ่ม job นี้จนกว่า reviewer ของ environment
+    # `production` จะกด Approve (ดูหัวไฟล์) ต้องเป็น environment เดียวกับ Backend
+    # CD เพื่อใช้รายชื่อผู้อนุมัติชุดเดียวกัน
+    environment:
+      name: production
+      url: https://github.com/${{ github.repository }}/releases/tag/${{ needs.build.outputs.tag }}
+    permissions:
+      contents: write # สร้าง tag + Release
+    steps:
+      # ปล่อยไฟล์เดียวกับที่ build ไว้และถูก review ไม่ build ซ้ำ
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-apk
+          path: dist
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.tag }}
+          target_commitish: ${{ env.SHA }}
+          name: Poonsuk Resort ${{ needs.build.outputs.name }} (build ${{ needs.build.outputs.code }})
+          generate_release_notes: true
+          make_latest: true
+          files: dist/poonsuk-resort-${{ needs.build.outputs.tag }}.apk
+          fail_on_unmatched_files: true
