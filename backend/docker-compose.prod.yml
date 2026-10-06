@@ -17,6 +17,7 @@ services:
     image: ${API_IMAGE:?API_IMAGE must be set in .env}:${IMAGE_TAG:?IMAGE_TAG must be exported by deploy.sh}
     env_file: .env
     environment:
+      CHATBOT_URL: http://chatbot:8000
       NODE_ENV: production
       DB_HOST: postgres
       DB_PORT: 5432
@@ -38,7 +39,7 @@ services:
         condition: service_healthy
     healthcheck:
       # busybox wget ships with node:20-alpine; /health/ready checks DB + Redis
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health/ready"]
+      test: [ "CMD", "wget", "-qO-", "http://127.0.0.1:3000/health/ready" ]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -62,7 +63,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-poonsuk}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-poonsuk}" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -73,17 +74,35 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}", "--appendonly", "yes"]
+    command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}", "--appendonly", "yes" ]
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD}
     volumes:
       # BullMQ jobs (hold expiry, notifications) survive a Redis restart
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+  chatbot:
+    profiles: [ "chatbot" ] # deploy.sh จะไม่แตะตัวนี้
+    build: ./chatbot/resort-chatbot-api
+    image: poonsuk-chatbot:local
+    env_file: ./chatbot/resort-chatbot-api/.env
+    environment:
+      BOOKING_API_BASE_URL: http://api:3000/api
+      BOOKING_API_INTERNAL_KEY: ${CHATBOT_INTERNAL_KEY:-}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - ./chatbot/indexing-pipeline/chroma_db:/indexing-pipeline/chroma_db:ro
+      - chatbot-hf-cache:/root/.cache/huggingface
+    depends_on: [ api ]
     restart: unless-stopped
     logging:
       driver: json-file
@@ -93,3 +112,4 @@ volumes:
   pgdata:
   uploads:
   redisdata:
+  chatbot-hf-cache:
