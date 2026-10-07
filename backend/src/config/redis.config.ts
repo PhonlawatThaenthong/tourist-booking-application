@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 /**
  * bullmq wants host/port (or an ioredis instance), not a bare URL, so this
  * parses `REDIS_URL` once for BullModule.forRoot. docker-compose.yml sets
@@ -61,4 +62,16 @@ export function withQueueTimeout<T>(pending: Promise<T>, ms = 2000): Promise<T> 
     timer = setTimeout(() => reject(new Error(`Redis did not respond within ${ms}ms`)), ms);
   });
   return Promise.race([pending, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Key prefix for throttler counters. In tests every app instance gets its
+ * own prefix (same isolation the in-memory store gave), unless a test sets
+ * THROTTLE_KEY_PREFIX to make two instances share one bucket on purpose.
+ */
+export function getThrottleKeyPrefix(): string {
+  if (process.env.THROTTLE_KEY_PREFIX) return process.env.THROTTLE_KEY_PREFIX;
+  return process.env.NODE_ENV === 'test'
+    ? `poonsuk:throttle:test:${randomUUID()}:`
+    : 'poonsuk:throttle:';
 }

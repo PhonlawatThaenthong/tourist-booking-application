@@ -11,7 +11,8 @@ import { UsersService } from '../src/modules/users/users.service';
  * Auth flows end to end: register, login, /me, refresh-token rotation,
  * logout, and the forgot/reset-password code.
  *
- * Rate limits matter here. The throttler is per IP and in memory per app, so
+ * Rate limits matter here. The throttler is per IP, with its own Redis key
+ * prefix per app instance under NODE_ENV=test (see getThrottleKeyPrefix), so
  * this file gets its own budget, but every HTTP call below counts:
  *   register 5/min · login 10/min · refresh 20/min
  *   forgot-password 3/15min · reset-password 5/15min
