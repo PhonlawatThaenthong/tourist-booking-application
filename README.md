@@ -79,7 +79,7 @@ flowchart LR
     end
 
     subgraph vm["☁️ GCE VM"]
-        nginx["Nginx<br/>HTTPS"]
+        nginx["Nginx<br/>HTTPS and Load balancer"]
         api["NestJS API"]
         pg[("PostgreSQL")]
         redis[("Redis<br/>cache · lock · queue")]
