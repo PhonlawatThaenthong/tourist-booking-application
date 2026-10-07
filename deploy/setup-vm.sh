@@ -25,7 +25,7 @@ apt-get install -y docker.io docker-compose-v2 nginx certbot curl
 command -v gcloud >/dev/null || snap install google-cloud-cli --classic
 systemctl enable --now docker nginx
 
-echo "==> swap (2 GB) — e2-small has 2 GB RAM for api + postgres + redis"
+echo "==> swap (2 GB) — headroom for 2 api replicas + postgres + redis (+ chatbot) on e2-medium"
 if ! swapon --show | grep -q /swapfile; then
   fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
   grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab

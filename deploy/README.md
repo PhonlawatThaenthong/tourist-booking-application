@@ -1,11 +1,13 @@
 # Deploy Backend ขึ้น GCP (Compute Engine + Nginx + GitHub Actions CD)
 
-สถาปัตยกรรม: VM 1 เครื่อง (Ubuntu 24.04) ใช้ Nginx บน host ทำ TLS termination แล้ว reverse proxy ไปที่ `127.0.0.1:3000` ส่วน api, postgres และ redis รันใน docker compose (`backend/docker-compose.prod.yml`)
+สถาปัตยกรรม: VM 1 เครื่อง (Ubuntu 24.04, e2-medium) ใช้ Nginx บน host ทำ TLS termination แล้วกระจายโหลดแบบ `least_conn` ไปที่ api 2 replica (`127.0.0.1:3000` และ `127.0.0.1:3001`) ส่วน api, postgres และ redis รันใน docker compose (`backend/docker-compose.prod.yml`)
 
 ```
-Flutter app ──HTTPS──> Nginx :443 (Let's Encrypt) ──> api :3000 (127.0.0.1)
-                                                      ├── postgres (volume pgdata)
-                                                      └── redis    (volume redisdata)
+Flutter app ──HTTPS──> Nginx :443 (Let's Encrypt) ── least_conn ──┬──> api   :3000 (127.0.0.1)
+                                                                  └──> api-2 :3001 (127.0.0.1)
+                                     ทั้งสองตัวใช้ร่วมกัน ├── postgres (volume pgdata)
+                                                     ├── redis    (volume redisdata: throttle, cache, lock, BullMQ)
+                                                     └── volume uploads (สลิป, รูปห้อง/ร้านอาหาร)
 GitHub push main ─> Backend CI ─> Backend CD ─> Artifact Registry ─> IAP SSH ─> deploy.sh
 ```
 
@@ -13,9 +15,9 @@ GitHub push main ─> Backend CI ─> Backend CD ─> Artifact Registry ─> IAP
 |---|---|
 | `.github/workflows/backend-cd.yml` | build image → push ไป Artifact Registry → SSH ผ่าน IAP → รัน `deploy.sh` → smoke test ผ่าน HTTPS |
 | `backend/docker-compose.prod.yml` | stack production (api ดึง image จาก registry และไม่เปิดพอร์ตสู่สาธารณะ) |
-| `deploy/deploy.sh` | pull image → pg_dump → migrate → สลับ container → health check → rollback image ถ้าไม่ผ่าน |
+| `deploy/deploy.sh` | pull image → pg_dump → migrate → สลับ api ทีละ replica พร้อม health check → rollback image ทั้งสองตัวถ้าไม่ผ่าน |
 | `deploy/setup-vm.sh` | ตั้งค่า VM ครั้งแรก (docker, nginx, certbot, swap, auth registry) |
-| `deploy/nginx/poonsuk-api.conf` | site config ของ Nginx |
+| `deploy/nginx/poonsuk-api.conf` | site config ของ Nginx (upstream 2 replica แบบ `least_conn`) |
 
 ทุกคำสั่งในหัวข้อ 1–6 และ 9 รันบนเครื่องตัวเองด้วย gcloud CLI (หรือใน Cloud Shell) และต้องใช้บัญชีที่เป็น Owner ของ project
 
@@ -83,7 +85,7 @@ gcloud compute addresses create poonsuk-api-ip --region=$REGION
 gcloud compute addresses describe poonsuk-api-ip --region=$REGION --format='value(address)'
 
 gcloud compute instances create $INSTANCE --zone=$ZONE \
-  --machine-type=e2-small \
+  --machine-type=e2-medium \
   --image-family=ubuntu-2404-lts-amd64 --image-project=ubuntu-os-cloud \
   --boot-disk-size=30GB --boot-disk-type=pd-balanced \
   --address=poonsuk-api-ip --tags=poonsuk-api \
@@ -91,7 +93,7 @@ gcloud compute instances create $INSTANCE --zone=$ZONE \
   --metadata=enable-oslogin=TRUE
 ```
 
-e2-small มี RAM 2 GB ซึ่งพอสำหรับ api, postgres และ redis เมื่อมี swap 2 GB ที่ `setup-vm.sh` สร้างให้ ไม่แนะนำ e2-micro (1 GB) เพราะ Node กับ Postgres รวมกันจะใช้ swap หนัก แม้ image จะ build บน GitHub ไม่ได้ build บน VM
+e2-medium มี RAM 4 GB สำหรับ api 2 replica (จำกัดตัวละ 512 MB ด้วย `mem_limit`), postgres และ redis โดยมี swap 2 GB ที่ `setup-vm.sh` สร้างให้เป็นส่วนเผื่อ ถ้าเปิด chatbot (profile `chatbot`) ด้วยให้ดู `docker stats` เพราะ chatbot โหลด model จึงกิน RAM มากที่สุด ส่วน e2-small (2 GB) พอสำหรับ api replica เดียวเท่านั้น
 
 ## 5. Firewall
 
@@ -315,8 +317,12 @@ cat .deployed-tag                     # commit ที่ขึ้นอยู่
 # compose บังคับให้มี IMAGE_TAG ทุกคำสั่ง (deploy.sh เป็นคน export ให้ตอน deploy)
 export IMAGE_TAG=$(cat .deployed-tag)
 docker compose -p poonsuk -f docker-compose.prod.yml ps
-docker compose -p poonsuk -f docker-compose.prod.yml logs -f --tail=100 api
+docker compose -p poonsuk -f docker-compose.prod.yml logs -f --tail=100 api api-2
+docker stats --no-stream                            # RAM ของแต่ละ container
+sudo tail -f /var/log/nginx/poonsuk-api.access.log  # up= บอกว่า request ไปตกที่ replica ไหน
 ```
+
+ปิด replica ตัวใดตัวหนึ่งชั่วคราวได้โดยไม่มี downtime (Nginx จะส่งทุก request ไปอีกตัว) เช่น `docker compose ... stop api-2` แล้ว `start api-2` เมื่อเสร็จ
 
 ### Rollback
 
@@ -335,7 +341,7 @@ sudo -i
 cd /opt/poonsuk
 export IMAGE_TAG=$(cat .deployed-tag)
 C="docker compose -p poonsuk -f docker-compose.prod.yml"
-$C stop api
+$C stop api api-2
 $C exec -T postgres sh -c 'pg_restore --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' < backups/pre-xxxx.dump
 sudo /opt/poonsuk/deploy.sh <commit-sha-ที่ตรงกับ schema ใน dump>
 ```
@@ -353,7 +359,9 @@ CD ไม่ได้ deploy ไฟล์ Nginx ถ้าแก้ `deploy/nginx
 ## กติกาและข้อจำกัด
 
 - **Migration ต้อง backward compatible** เพราะ migration รันก่อนสลับ container (api ตัวเก่ายังรับ request อยู่) และ rollback ย้อนได้แค่ image ไม่ย้อน schema ให้แยกการเปลี่ยนที่ทำลายของเดิมเป็นสองรอบ เช่น เพิ่มคอลัมน์ใหม่ → deploy โค้ดที่ใช้คอลัมน์ใหม่ → ลบคอลัมน์เก่าใน release ถัดไป
-- **Downtime ไม่กี่วินาที** ตอนสลับ api container เพราะมี replica เดียว ถ้าต้องการ zero-downtime ต้องรัน api สองตัวแล้วเพิ่มใน `upstream` ของ Nginx (แต่ต้องย้าย throttler ไปใช้ Redis store และย้ายไฟล์อัปโหลดไป shared storage ก่อน)
+- **API ต้อง backward compatible ระหว่าง rollout** เพราะช่วงที่สลับทีละ replica (ราว 1–2 นาที) เวอร์ชันเก่าและใหม่รับ request พร้อมกัน
+- **Zero-downtime deploy ใช้ได้เฉพาะบน VM เดียว** api 2 replica ใช้ volume `uploads` ร่วมกันและเก็บ rate limit ไว้ใน Redis ถ้าจะขยายไปหลาย VM ต้องย้ายไฟล์อัปโหลดไป GCS และแยก postgres/redis ออกจาก VM ก่อน
+- **Rate limit เก็บใน Redis** ถ้า Redis ล่ม จะถอยไปนับใน memory ของแต่ละ replica ชั่วคราว (limit จริงจึงหลวมขึ้นเป็นราว 2 เท่า) แทนที่จะตอบ error ทุก request
 - **ไฟล์สลิปและรูปภาพ** อยู่ใน volume `uploads` และ `deploy.sh` ไม่ได้ backup ให้ ควรตั้ง snapshot schedule ของ boot disk ใน Compute Engine เพิ่ม
 - `client_max_body_size 6m` ใน Nginx ต้องปรับตามถ้าเพิ่ม `PAYMENT_MAX_SLIP_BYTES` หรือ `IMAGE_MAX_BYTES`
 - กด Run workflow ด้วยมือจะข้ามขั้น CI ใช้กับ commit ที่ผ่าน CI แล้วเท่านั้น

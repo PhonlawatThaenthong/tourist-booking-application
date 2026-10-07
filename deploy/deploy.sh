@@ -7,19 +7,29 @@
 #   1. pull the new image          (fails early, nothing touched yet)
 #   2. pg_dump                     (the only way back if a migration goes wrong)
 #   3. migrations with the NEW image, while the OLD api is still serving
-#   4. swap the api container
-#   5. wait for /health/ready      -> on failure, roll the api back to the previous tag
+#   4. swap the api replicas ONE AT A TIME (api, then api-2); Nginx sends
+#      traffic to whichever one is up, so there is no downtime
+#   5. after each swap, wait for that replica's /health/ready
+#      -> on failure, roll BOTH replicas back to the previous tag
 #
 # Rollback restores the previous IMAGE only. Migrations are not reverted, so
 # every migration must stay compatible with the previous release
 # (expand -> deploy -> contract in a later release). Restoring a dump is manual:
 # see deploy/README.md "Rollback".
+#
+# During a rollout the old and new release serve requests side by side for a
+# minute or two, so API changes must be backward compatible in the same way.
 set -euo pipefail
 
 TAG="${1:?usage: deploy.sh <image-tag>}"
 APP_DIR=/opt/poonsuk
 COMPOSE=(docker compose -f "$APP_DIR/docker-compose.prod.yml" --project-directory "$APP_DIR" -p poonsuk)
-HEALTH_URL=http://127.0.0.1:3000/health/ready
+# Swapped in this order. Each one's host port is in the compose file.
+API_SERVICES=(api api-2)
+declare -A HEALTH_URL=(
+  [api]=http://127.0.0.1:3000/health/ready
+  [api-2]=http://127.0.0.1:3001/health/ready
+)
 KEEP_BACKUPS=14
 
 cd "$APP_DIR"
@@ -61,27 +71,45 @@ ls -1t backups/*.dump 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs -r rm
 log "migrations (new image, old api still serving)"
 "${COMPOSE[@]}" run --rm --no-deps api npm run --silent migration:run:prod
 
-log "swap api"
-"${COMPOSE[@]}" up -d --no-deps api
+wait_healthy() {
+  for _ in $(seq 1 40); do
+    curl -fsS --max-time 3 "$1" >/dev/null 2>&1 && return 0
+    sleep 3
+  done
+  return 1
+}
 
-log "wait for $HEALTH_URL"
-healthy=false
-for _ in $(seq 1 40); do
-  if curl -fsS --max-time 3 "$HEALTH_URL" >/dev/null 2>&1; then healthy=true; break; fi
-  sleep 3
+# Both replicas, so they never stay on different releases after a failure.
+rollback_all() {
+  if [[ -z "$PREV_TAG" ]]; then
+    log "no previous tag to roll back to"
+    return
+  fi
+  log "rolling back ${API_SERVICES[*]} to $PREV_TAG (schema NOT reverted; dump: $DUMP)"
+  for s in "${API_SERVICES[@]}"; do
+    IMAGE_TAG="$PREV_TAG" SENTRY_RELEASE="$PREV_TAG" "${COMPOSE[@]}" up -d --no-deps "$s"
+  done
+}
+
+for svc in "${API_SERVICES[@]}"; do
+  log "swap $svc"
+  "${COMPOSE[@]}" up -d --no-deps "$svc"
+
+  log "wait for ${HEALTH_URL[$svc]}"
+  if ! wait_healthy "${HEALTH_URL[$svc]}"; then
+    log "UNHEALTHY $svc — last logs:"
+    "${COMPOSE[@]}" logs --tail=60 "$svc" || true
+    rollback_all
+    exit 1
+  fi
+
+  # Nginx marks a replica down for fail_timeout (10s) after failed attempts
+  # during its swap. Wait that out so the other one is never taken down while
+  # this one is still marked unavailable.
+  sleep 10
 done
 
-if ! $healthy; then
-  log "UNHEALTHY — last api logs:"
-  "${COMPOSE[@]}" logs --tail=60 api || true
-  if [[ -n "$PREV_TAG" ]]; then
-    log "rolling back api to $PREV_TAG (schema NOT reverted; dump: $DUMP)"
-    IMAGE_TAG="$PREV_TAG" SENTRY_RELEASE="$PREV_TAG" "${COMPOSE[@]}" up -d --no-deps api
-  fi
-  exit 1
-fi
-
 echo "$TAG" > .deployed-tag
-log "healthy — $TAG is live"
+log "healthy — $TAG is live on ${API_SERVICES[*]}"
 
 docker image prune -af --filter "until=168h" >/dev/null || true
