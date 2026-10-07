@@ -21,3 +21,5 @@ frontend/full_log.txt
 /.flutter-plugins-dependencies
 
 docs/
+
+Claude outputs/
