@@ -17,6 +17,7 @@ import { RedisCacheModule } from './modules/cache/redis-cache.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { ChatbotModule } from './modules/chatbot/chatbot.module';
 import { InternalAwareThrottlerGuard } from './common/guards/internal-aware-throttler.guard';
+import { createRedisThrottlerStorage } from './common/throttler/resilient-throttler.storage';
 import { buildDataSourceOptions } from './config/data-source';
 import { getRedisConnection } from './config/redis.config';
 
@@ -26,11 +27,15 @@ import { getRedisConnection } from './config/redis.config';
     // A no-op unless src/instrument.ts found a DSN.
     SentryModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
-    // Per-IP, in-memory: correct for a single API instance. Sensitive routes
-    // (login, password reset, QR, chatbot) tighten this with @Throttle.
-    ThrottlerModule.forRoot({
-      throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
-      errorMessage: 'คำขอถี่เกินไป กรุณารอสักครู่แล้วลองใหม่',
+    // Per-IP counters in Redis, shared by every API replica (falls back to
+    // in-memory if Redis is down). Sensitive routes (login, password reset,
+    // QR, chatbot) tighten this with @Throttle.
+    ThrottlerModule.forRootAsync({
+      useFactory: () => ({
+        throttlers: [{ name: 'default', ttl: 60_000, limit: 120 }],
+        errorMessage: 'คำขอถี่เกินไป กรุณารอสักครู่แล้วลองใหม่',
+        storage: createRedisThrottlerStorage(),
+      }),
     }),
     TypeOrmModule.forRoot(buildDataSourceOptions()),
     BullModule.forRoot({ connection: getRedisConnection() }),
